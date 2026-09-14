@@ -22,6 +22,10 @@ SENSORY_SUPERCLASSES = frozenset(
 )
 MOTOR_SUPERCLASSES = frozenset({"descending_neuron", "cb_motor", "vnc_motor"})
 
+# Cell types named in Google's announcements of the male CNS connectome (2026-09-03): AOTU008 in the
+# Google Research blog; AOTU012, DNg13 and LoVP92 in the companion post on blog.google.
+NAMED_TYPES = ("AOTU008", "AOTU012", "DNg13", "LoVP92")
+
 LABELS_PATH = DATA / "ground_truth_labels.parquet"
 NEURONS_PATH = DATA / "neurons.parquet"
 NEURON_ROI_PATH = DATA / "neuron_roi_counts.parquet"

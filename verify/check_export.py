@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from export.build_static_json import GAME_POOL_SIZE, ROUTES
-from pipeline.common import RESULTS, SCORES_PATH, WEB_DATA
+from pipeline.common import FEATURES_PATH, RESULTS, SCORES_PATH, WEB_DATA
 from pipeline.ground_truth import SEX_RELATED
 
 
@@ -52,6 +52,20 @@ def main() -> None:
     last = manifest[-1]
     assert (WEB_DATA / "neuropil_positions.f32").stat().st_size == 12 * (last["vertexStart"] + last["vertexCount"])
     assert (WEB_DATA / "neuropil_indices.u32").stat().st_size == 4 * (last["indexStart"] + last["indexCount"])
+    assert all(n["annotatedShare"] is not None for n in manifest if n["synapses"] > 0), "Neuropil without annotated share"
+
+    order = list(types)
+    diagnostics = json.loads((RESULTS / "model_diagnostics.json").read_text(encoding="utf-8"))
+    assert load("diagnostics.json") == diagnostics, "diagnostics.json differs from results/model_diagnostics.json"
+    xy = load("map.json")["xy"]
+    assert len(xy) == 2 * len(order) and min(xy) >= 0 and max(xy) <= 1000, "Wiring map does not cover every type"
+    wiring = load("wiring.json")
+    assert len(wiring["values"]) == len(wiring["inputs"]) == len(wiring["outputs"]) == len(order), "Wiring rows misaligned"
+    features = pd.read_parquet(FEATURES_PATH).set_index("cell_type")
+    for i in (0, len(order) // 2, len(order) - 1):
+        expected = features.loc[order[i], wiring["columns"]].astype(float).to_numpy()
+        assert np.allclose(wiring["values"][i], expected, rtol=1e-3), f"Wiring features misaligned for {order[i]}"
+    assert all(max(row[0::2], default=0) < len(order) for row in wiring["inputs"]), "Partner index out of range"
 
     print(
         f"OK: {len(types)} types, {len(routes)} routes (Giant Fiber on LPLC2 -> TTMn), {len(game)} game pairs, "

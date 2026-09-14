@@ -1,5 +1,5 @@
 PYTHON ?= python
-CHECKS := schema ground_truth type_graph features classifier pathfinder null_model candidates ablation export
+CHECKS := schema ground_truth type_graph features classifier pathfinder null_model candidates ablation diagnostics export
 
 .PHONY: reproduce data model validate export test checks paper web
 
@@ -19,6 +19,7 @@ validate:
 	$(PYTHON) -m pipeline.null_model --n-trials 500
 	$(PYTHON) -m pipeline.candidates
 	$(PYTHON) -m pipeline.ablation
+	$(PYTHON) -m pipeline.model_diagnostics
 	$(PYTHON) -m pipeline.render_hero
 
 export:

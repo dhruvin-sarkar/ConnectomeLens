@@ -5,11 +5,8 @@ import sys
 
 import pandas as pd
 
-from pipeline.common import RESULTS, SCORES_PATH
+from pipeline.common import NAMED_TYPES, RESULTS, SCORES_PATH
 
-# Cell types named in Google's announcements of the male CNS connectome (2026-09-03): AOTU008 in the
-# Google Research blog; AOTU012, DNg13 and LoVP92 in the companion post on blog.google.
-NAMED_TYPES = ("AOTU008", "AOTU012", "DNg13", "LoVP92")
 MIN_LIFT = 2.0
 TOP_N = 20
 

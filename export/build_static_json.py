@@ -10,18 +10,23 @@ import navis
 import numpy as np
 import pandas as pd
 import requests
-import shap
 from requests.adapters import HTTPAdapter
+from scipy import sparse
+from sklearn.decomposition import TruncatedSVD
+from sklearn.manifold import TSNE
+from sklearn.preprocessing import normalize
 from urllib3.util.retry import Retry
 
 from pipeline.ablation import ABLATION_PATH, as_dict, outcome
 from pipeline.build_type_graph import load_type_graph
 from pipeline.candidates import CANDIDATES_PATH, HEDGE, describe_feature
 from pipeline.common import DATA, LABELS_PATH, NEURON_ROI_PATH, NEURONS_PATH, RESULTS, SCORES_PATH, SEED, WEB_DATA
+from pipeline.compute_features import GRAPH_FEATURES
 from pipeline.ground_truth import SEX_RELATED
+from pipeline.model_diagnostics import DIAGNOSTICS_PATH, SHAP_PATH
 from pipeline.pathfinder import find_path
 from pipeline.render_hero import MESH_SOURCES, decimate, load_neuropil_meshes, neuropil_scores
-from pipeline.train_classifier import cross_validate, load_features, training_set
+from pipeline.train_classifier import load_features, training_set
 
 SKELETON_URL = "https://storage.googleapis.com/flyem-male-cns/v1.0/segmentation/skeletons-malecns/skeletons-swc/{}.swc"
 SKELETON_CACHE = DATA / "skeletons"
@@ -33,6 +38,9 @@ N_TYPE_NEUROPILS = 3
 N_NEUROPIL_TYPES = 12
 N_TOP_ISOMORPHIC = 150
 GAME_POOL_SIZE = 40
+N_PARTNERS = 6
+MAP_COMPONENTS = 64
+MAP_PERPLEXITY = 40
 ROUTES = [
     ("LPLC2", "TTMn", "Looming detector to jump motor neuron (Giant Fiber escape pathway)"),
     ("LC4", "TTMn", "Second looming detector type to jump motor neuron"),
@@ -100,20 +108,59 @@ def neuropil_top_types(roi_counts: pd.DataFrame, neurons: pd.DataFrame) -> dict[
     return {roi: [[t, round(float(s), 4)] for t, s in zip(g["type"], g["share"])] for roi, g in table.groupby("roi")}
 
 
-def explanations(labels: pd.DataFrame, scores: pd.DataFrame) -> dict[str, list]:
+def explanations(labels: pd.DataFrame) -> dict[str, list]:
     """Per type: the features with the largest SHAP contributions in the fold model that scored it."""
-    X, y = training_set(load_features(), labels)
-    cv = cross_validate(X, y)
-    if not np.allclose(cv.oof, scores.loc[X.index, "oof_probability"]):
-        raise RuntimeError("Re-run cross-validation does not reproduce the stored out-of-fold probabilities")
+    X, _ = training_set(load_features(), labels)
+    contributions = pd.read_parquet(SHAP_PATH).set_index("cell_type")
+    if set(contributions.index) != set(X.index) or list(contributions.columns) != list(X.columns):
+        raise RuntimeError(f"{SHAP_PATH} does not match the feature table; run pipeline.model_diagnostics")
     result = {}
-    for fold, members in scores.loc[X.index].groupby("fold"):
-        values = shap.TreeExplainer(cv.models[int(fold)]).shap_values(X.loc[members.index])
-        contributions = pd.DataFrame(values, index=members.index, columns=X.columns)
-        for cell_type, row in contributions.iterrows():
-            top = row.abs().sort_values(ascending=False).head(N_EXPLANATIONS).index
-            result[cell_type] = [[describe_feature(f, X.at[cell_type, f]), round(float(row[f]), 3)] for f in top]
+    for cell_type, row in contributions.iterrows():
+        top = row.abs().sort_values(ascending=False).head(N_EXPLANATIONS).index
+        result[cell_type] = [[describe_feature(f, X.at[cell_type, f]), round(float(row[f]), 3)] for f in top]
     return result
+
+
+def wiring_map(graph, order: list[str], seed: int = SEED) -> list[int]:
+    """2-D map of the types in which types with similar input and output partners sit close together.
+
+    Each type is described by its log-weighted input and output connection rows; a truncated SVD of those rows is
+    embedded with cosine t-SNE. Returns flat x, y pairs scaled to 0–1000, in ``order``.
+    """
+    n = graph.vcount()
+    edges = np.asarray(graph.get_edgelist())
+    weights = np.log1p(np.asarray(graph.es["weight"], dtype=float))
+    adjacency = sparse.coo_matrix((weights, (edges[:, 0], edges[:, 1])), shape=(n, n)).tocsr()
+    rows = sparse.hstack([normalize(adjacency), normalize(adjacency.T.tocsr())]).tocsr()
+    reduced = normalize(TruncatedSVD(MAP_COMPONENTS, random_state=seed).fit_transform(rows))
+    xy = TSNE(2, perplexity=MAP_PERPLEXITY, init="pca", metric="cosine", random_state=seed).fit_transform(reduced)
+    xy -= xy.min(axis=0)
+    xy *= 1000 / xy.max()
+    position = pd.DataFrame(xy, index=graph.vs["name"]).loc[order]
+    return np.rint(position.to_numpy()).astype(int).ravel().tolist()
+
+
+def wiring_profiles(graph, order: list[str]) -> dict:
+    """Topology features and the strongest input and output partners of every type, as rows aligned with ``order``."""
+    features = load_features().loc[order, GRAPH_FEATURES]
+    position = pd.Series(np.arange(len(order)), index=order).reindex(graph.vs["name"]).to_numpy()
+    edges = pd.DataFrame(graph.get_edgelist(), columns=["source", "target"])
+    edges["weight"] = np.asarray(graph.es["weight"], dtype=np.int64)
+    edges = edges.sort_values("weight", ascending=False, kind="stable")
+
+    def partners(own: str, other: str) -> list[list[int]]:
+        top = edges.groupby(own, sort=False).head(N_PARTNERS)
+        rows = [[] for _ in order]
+        for vertex, partner, weight in zip(top[own], top[other], top["weight"]):
+            rows[position[vertex]] += [int(position[partner]), int(weight)]
+        return rows
+
+    return {
+        "columns": GRAPH_FEATURES,
+        "values": [[float(f"{v:.4g}") for v in row] for row in features.astype(float).to_numpy()],
+        "inputs": partners("target", "source"),
+        "outputs": partners("source", "target"),
+    }
 
 
 _SESSIONS = threading.local()
@@ -176,8 +223,13 @@ def fetch_skeletons(cell_types: set[str], body_ids: dict[str, list[int]], center
     return chosen
 
 
-def neuropil_geometry(center_nm: np.ndarray, scores: pd.DataFrame, top_types: dict[str, list]) -> list[dict]:
-    """Decimated neuropil meshes written as two binary buffers; returns the manifest of per-mesh slices and scores."""
+def neuropil_geometry(
+    center_nm: np.ndarray, scores: pd.DataFrame, top_types: dict[str, list], annotated: dict[str, float]
+) -> list[dict]:
+    """Decimated neuropil meshes written as two binary buffers; returns the manifest of per-mesh slices and scores.
+
+    ``annotated`` maps each neuropil to the share of its synapses made by types annotated sex-related.
+    """
     score = scores.set_index("neuropil")
     positions, indices, manifest = [], [], []
     vertex_start = index_start = 0
@@ -195,6 +247,7 @@ def neuropil_geometry(center_nm: np.ndarray, scores: pd.DataFrame, top_types: di
                     "name": name,
                     "region": region,
                     "score": float(score.at[name, "score"]) if scored else None,
+                    "annotatedShare": annotated.get(name),
                     "synapses": int(score.at[name, "synapses"]) if scored else 0,
                     "vertexStart": vertex_start,
                     "vertexCount": len(vertices),
@@ -323,6 +376,7 @@ def main() -> None:
         raise RuntimeError(f"Only {len(pairs)} game pairs have skeletons for both types")
 
     ordered = types.sort_values("oof_probability", ascending=False)
+    community = load_features()["community"].astype(int)
     write_json(
         "types.json",
         [
@@ -333,19 +387,28 @@ def main() -> None:
                 "n": int(row.n_neurons),
                 "s": row.superclass,
                 "nt": row.nt,
+                "c": int(community[t]),
                 "np": top_neuropils.get(t, []),
                 "b": skeletons.get(t),
             }
             for t, row in ordered.iterrows()
         ],
     )
-    write_json("explanations.json", explanations(labels, scores))
+    order = ordered.index.tolist()
+    write_json("explanations.json", explanations(labels))
+    diagnostics = json.loads(DIAGNOSTICS_PATH.read_text(encoding="utf-8"))
+    annotated = {r["neuropil"]: r["annotated_share"] for r in diagnostics["neuropil_agreement"]["neuropils"]}
     region_scores = neuropil_scores(roi_counts, neurons, scores.reset_index())
-    write_json("neuropils.json", neuropil_geometry(center_nm, region_scores, neuropil_top_types(roi_counts, neurons)))
+    write_json(
+        "neuropils.json", neuropil_geometry(center_nm, region_scores, neuropil_top_types(roi_counts, neurons), annotated)
+    )
     write_json("routes.json", route_records)
     write_json("game.json", [{"sexRelated": a, "isomorphic": b} for a, b in pairs])
     write_json("candidates.json", candidates.assign(note=HEDGE).to_dict("records"))
     write_json("summary.json", summary(graph, types, neurons))
+    write_json("diagnostics.json", diagnostics)
+    write_json("map.json", {"xy": wiring_map(graph, order)})
+    write_json("wiring.json", wiring_profiles(graph, order))
 
     size = sum(p.stat().st_size for p in WEB_DATA.rglob("*") if p.is_file())
     print(
