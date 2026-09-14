@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from pipeline.build_type_graph import aggregate_type_edges, build_graph, combine_type_edges, summarise_types
+from pipeline.build_type_graph import aggregate_type_edges, build_graph, combine_type_edges, summarize_types
 
 # Five neurons in three types: A = {1, 2}, B = {3, 4}, C = {5}.
 BODY_TYPES = pd.Series({1: "A", 2: "A", 3: "B", 4: "B", 5: "C"})
@@ -50,7 +50,7 @@ def test_graph_drops_self_loops_and_weak_inputs():
             "post": [1, 2, 3, 4, 5],
         }
     )
-    nodes = summarise_types(neurons).set_index("cell_type")
+    nodes = summarize_types(neurons).set_index("cell_type")
     assert nodes.loc["A", "n_neurons"] == 2
     assert nodes.loc["A", "nt"] == "acetylcholine"
     assert nodes["hemilineage"].to_dict() == {"A": "LHa1", "B": "18B", "C": "unknown"}

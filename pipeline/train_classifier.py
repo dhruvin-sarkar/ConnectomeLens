@@ -56,7 +56,7 @@ def feature_columns(features: pd.DataFrame, feature_set: str) -> list[str]:
 
 
 def training_set(features: pd.DataFrame, labels: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:
-    """Features and binary targets for types labelled sex-related or isomorphic."""
+    """Features and binary targets for types labeled sex-related or isomorphic."""
     label = labels.set_index("cell_type")["label"].reindex(features.index)
     if label.isna().any():
         raise ValueError(f"{int(label.isna().sum())} feature rows have no label")
@@ -95,7 +95,7 @@ def cross_validate(
     return CVResult(oof, fold, fold_auc_pr, models)
 
 
-def summarise(y: np.ndarray, oof: np.ndarray) -> dict:
+def summarize(y: np.ndarray, oof: np.ndarray) -> dict:
     """AUC-PR, ROC AUC, prevalence baseline, and precision among the top-k ranked types."""
     top = np.argsort(-oof, kind="stable")[:TOP_K]
     return {
@@ -117,7 +117,7 @@ def main() -> None:
     labels = pd.read_parquet(LABELS_PATH)
     X, y = training_set(features, labels)
     cv = cross_validate(X, y)
-    metrics = summarise(y, cv.oof)
+    metrics = summarize(y, cv.oof)
 
     label_of = labels.set_index("cell_type")["label"].reindex(X.index)
     per_class = {}
@@ -129,14 +129,14 @@ def main() -> None:
             "baseline_auc_pr": float(y[mask].mean()),
         }
 
-    feature_sets = {"full": {"n_features": X.shape[1], **summarise(y, cv.oof)}}
+    feature_sets = {"full": {"n_features": X.shape[1], **summarize(y, cv.oof)}}
     for name in ("topology_only", "static_only"):
         columns = feature_columns(X, name)
-        feature_sets[name] = {"n_features": len(columns), **summarise(y, cross_validate(X[columns], y).oof)}
+        feature_sets[name] = {"n_features": len(columns), **summarize(y, cross_validate(X[columns], y).oof)}
 
     groups = lineage_groups(X.index)
     grouped = cross_validate(X, y, groups=groups)
-    lineage_cv = {"n_groups": int(len(np.unique(groups))), **summarise(y, grouped.oof), "fold_auc_pr": grouped.fold_auc_pr}
+    lineage_cv = {"n_groups": int(len(np.unique(groups))), **summarize(y, grouped.oof), "fold_auc_pr": grouped.fold_auc_pr}
 
     final = fit(X, y)
     booster = final.booster_

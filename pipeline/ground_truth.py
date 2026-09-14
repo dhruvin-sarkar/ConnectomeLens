@@ -28,7 +28,7 @@ def resolve_type_labels(annotation_counts: pd.DataFrame) -> pd.DataFrame:
     """
     unknown = set(annotation_counts["dimorphism"].dropna()) - set(ANNOTATION_TO_LABEL)
     if unknown:
-        raise ValueError(f"Unrecognised dimorphism annotations: {sorted(unknown)}")
+        raise ValueError(f"Unrecognized dimorphism annotations: {sorted(unknown)}")
 
     rows = []
     for cell_type, group in annotation_counts.groupby("cell_type", sort=True):

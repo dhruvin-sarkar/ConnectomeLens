@@ -23,7 +23,7 @@ def main() -> None:
         ratio = counts.get(label, 0) / published
         assert 0.1 <= ratio <= 10, f"{label}: {counts.get(label, 0)} types vs {published} published (ratio {ratio:.2f})"
         print(f"{label}: {counts.get(label, 0)} types (published {published}, ratio {ratio:.2f})")
-    print(f"OK: {len(labels)} labelled types")
+    print(f"OK: {len(labels)} labeled types")
 
 
 if __name__ == "__main__":

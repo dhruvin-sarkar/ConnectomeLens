@@ -63,7 +63,7 @@ def combine_type_edges(parts: list[pd.DataFrame]) -> pd.DataFrame:
     ].sum()
 
 
-def summarise_types(neurons: pd.DataFrame) -> pd.DataFrame:
+def summarize_types(neurons: pd.DataFrame) -> pd.DataFrame:
     """One row per cell type: size, dominant superclass, neurotransmitter and hemilineage, synapse totals."""
 
     def mode(series: pd.Series) -> str:
@@ -172,7 +172,7 @@ def main() -> None:
         neurons.to_parquet(NEURONS_PATH, index=False)
         roi_counts.to_parquet(NEURON_ROI_PATH, index=False)
 
-    nodes = summarise_types(neurons)
+    nodes = summarize_types(neurons)
     nodes.to_parquet(TYPE_NODES_PATH, index=False)
     edges = fetch_type_edges(neurons.set_index("bodyId")["type"])
     edges.to_parquet(TYPE_EDGES_PATH, index=False)

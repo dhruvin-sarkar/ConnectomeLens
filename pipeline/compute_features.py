@@ -52,7 +52,7 @@ def hop_distances(graph: ig.Graph, anchors: list[int], mode: str) -> np.ndarray:
 
 
 def communities(graph: ig.Graph, seed: int = SEED) -> np.ndarray:
-    """Leiden modularity communities on the undirected, weight-summed graph, labelled by size rank."""
+    """Leiden modularity communities on the undirected, weight-summed graph, labeled by size rank."""
     random.seed(seed)
     undirected = graph.as_undirected(mode="collapse", combine_edges={"weight": "sum"})
     membership = np.asarray(
