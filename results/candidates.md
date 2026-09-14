@@ -6,7 +6,7 @@ These are candidates for further investigation, not new findings of dimorphism. 
 
 ## fru/dsx cross-reference
 
-fru/dsx expression was not a model input. 2 of 2 candidates carry a fru or dsx annotation, against 587 of 11,271 other isomorphic types (one-sided Fisher exact test: odds ratio inf, p = 0.0027).
+fru/dsx expression was not a model input. 2 of 2 candidates carry a fru or dsx annotation, against 587 of 11,271 other isomorphic types (one-sided Fisher exact test: odds ratio unbounded because every candidate is annotated, p = 0.0027).
 
 ## Table
 

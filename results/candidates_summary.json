@@ -4,6 +4,6 @@
   "fru_dsx_candidates": 2,
   "fru_dsx_other_isomorphic": 587,
   "n_other_isomorphic": 11271,
-  "fisher_odds_ratio": Infinity,
+  "fisher_odds_ratio": null,
   "fisher_p_value": 0.0027255373243076204
 }

@@ -23,18 +23,18 @@ def describe_feature(name: str, value) -> str:
     if name.startswith("out_frac_"):
         return f"{value:.0%} of output synapses in {name.removeprefix('out_frac_')}"
     descriptions = {
-        "in_degree": f"{int(value)} strong input partner types",
-        "out_degree": f"{int(value)} strong output partner types",
-        "in_strength": f"{int(value):,} synapses received on strong connections",
-        "out_strength": f"{int(value):,} synapses sent on strong connections",
-        "pagerank": f"PageRank {value:.2e}",
-        "betweenness": f"betweenness centrality {value:,.0f}",
-        "community": f"member of wiring community {value}",
-        "hops_from_sensory": f"{int(value)} hops downstream of the nearest sensory type",
-        "hops_to_motor": f"{int(value)} hops upstream of the nearest descending or motor type",
-        "nt": f"predicted neurotransmitter {value}",
+        "in_degree": lambda v: f"{int(v)} strong input partner types",
+        "out_degree": lambda v: f"{int(v)} strong output partner types",
+        "in_strength": lambda v: f"{int(v):,} synapses received on strong connections",
+        "out_strength": lambda v: f"{int(v):,} synapses sent on strong connections",
+        "pagerank": lambda v: f"PageRank {v:.2e}",
+        "betweenness": lambda v: f"betweenness centrality {v:,.0f}",
+        "community": lambda v: f"member of wiring community {v}",
+        "hops_from_sensory": lambda v: f"{int(v)} hops downstream of the nearest sensory type",
+        "hops_to_motor": lambda v: f"{int(v)} hops upstream of the nearest descending or motor type",
+        "nt": lambda v: f"predicted neurotransmitter {v}",
     }
-    return descriptions[name]
+    return descriptions[name](value)
 
 
 def top_reasons(contributions: pd.Series, values: pd.Series, n: int = N_REASONS) -> list[str]:
@@ -116,6 +116,7 @@ def main() -> None:
         [int((~in_table & has_fru_dsx).sum()), int((~in_table & ~has_fru_dsx).sum())],
     ]
     odds_ratio, p_value = fisher_exact(contingency, alternative="greater")
+    odds_text = f"odds ratio {odds_ratio:.1f}" if np.isfinite(odds_ratio) else "odds ratio unbounded because every candidate is annotated"
 
     lines = [
         "# Candidate cell types",
@@ -135,7 +136,7 @@ def main() -> None:
         "",
         f"fru/dsx expression was not a model input. {contingency[0][0]} of {len(selected)} candidates carry a fru or "
         f"dsx annotation, against {contingency[1][0]:,} of {contingency[1][0] + contingency[1][1]:,} other "
-        f"isomorphic types (one-sided Fisher exact test: odds ratio {odds_ratio:.1f}, p = {p_value:.2g}).",
+        f"isomorphic types (one-sided Fisher exact test: {odds_text}, p = {p_value:.2g}).",
         "",
         "## Table",
         "",
@@ -154,7 +155,7 @@ def main() -> None:
         "fru_dsx_candidates": contingency[0][0],
         "fru_dsx_other_isomorphic": contingency[1][0],
         "n_other_isomorphic": contingency[1][0] + contingency[1][1],
-        "fisher_odds_ratio": float(odds_ratio),
+        "fisher_odds_ratio": float(odds_ratio) if np.isfinite(odds_ratio) else None,
         "fisher_p_value": float(p_value),
     }
     (RESULTS / "candidates_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
