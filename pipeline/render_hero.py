@@ -26,7 +26,10 @@ BACKGROUND = "#07070b"
 
 
 def load_neuropil_meshes(region: str = "brain") -> dict[str, tuple[np.ndarray, np.ndarray]]:
-    """Janelia's neuropil meshes for ``brain`` or ``vnc``, keyed by ROI name: vertices (nm), triangles."""
+    """Janelia's neuropil meshes for ``brain`` or ``vnc``, keyed by ROI name: vertices (nm), triangles.
+
+    ROIs listed in the segment properties but without a published mesh file are reported and skipped.
+    """
     source = MESH_SOURCES[region]
     info = requests.get(f"{source}/segment_properties/info", timeout=60).json()["inline"]
     cache = MESH_CACHE / region
@@ -36,6 +39,9 @@ def load_neuropil_meshes(region: str = "brain") -> dict[str, tuple[np.ndarray, n
         path = cache / f"{name}.ngmesh"
         if not path.exists():
             resp = requests.get(f"{source}/mesh/{urllib.parse.quote(name)}.ngmesh", timeout=300)
+            if resp.status_code == 404:
+                print(f"No published {region} mesh for {name}; skipped")
+                continue
             resp.raise_for_status()
             path.write_bytes(resp.content)
         raw = path.read_bytes()
@@ -46,8 +52,17 @@ def load_neuropil_meshes(region: str = "brain") -> dict[str, tuple[np.ndarray, n
     return meshes
 
 
+def face_normals(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
+    """Unnormalized triangle normals following the winding order."""
+    tri = vertices[faces]
+    return np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+
+
 def decimate(vertices: np.ndarray, faces: np.ndarray, cell: float) -> tuple[np.ndarray, np.ndarray]:
-    """Vertex-clustering simplification: merge vertices sharing a cubic cell of side ``cell``."""
+    """Vertex-clustering simplification: merge vertices sharing a cubic cell of side ``cell``.
+
+    Moving vertices to cluster centroids can invert a triangle; inverted triangles get their original winding back.
+    """
     keys = np.floor(vertices / cell).astype(np.int64)
     _, cluster, counts = np.unique(keys, axis=0, return_inverse=True, return_counts=True)
     cluster = cluster.ravel()
@@ -58,7 +73,9 @@ def decimate(vertices: np.ndarray, faces: np.ndarray, cell: float) -> tuple[np.n
     degenerate = (
         (remapped[:, 0] == remapped[:, 1]) | (remapped[:, 1] == remapped[:, 2]) | (remapped[:, 0] == remapped[:, 2])
     )
-    remapped = remapped[~degenerate]
+    remapped, original = remapped[~degenerate], faces[~degenerate]
+    flipped = np.einsum("ij,ij->i", face_normals(vertices, original), face_normals(merged, remapped)) < 0
+    remapped[flipped] = remapped[flipped][:, [0, 2, 1]]
     _, first = np.unique(np.sort(remapped, axis=1), axis=0, return_index=True)
     return merged, remapped[np.sort(first)]
 
