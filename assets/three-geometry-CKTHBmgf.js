@@ -1,0 +1,1 @@
+import{n as e}from"./rolldown-runtime-BpQH8Ho1.js";import{c as t,s as n}from"./three-D_8ikWN-.js";var r=e({BufferAttribute:()=>n,BufferGeometry:()=>t});export{r as t};
