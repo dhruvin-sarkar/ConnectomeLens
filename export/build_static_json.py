@@ -20,7 +20,17 @@ from urllib3.util.retry import Retry
 from pipeline.ablation import ABLATION_PATH, as_dict, outcome
 from pipeline.build_type_graph import load_type_graph
 from pipeline.candidates import CANDIDATES_PATH, HEDGE, describe_feature
-from pipeline.common import DATA, LABELS_PATH, NEURON_ROI_PATH, NEURONS_PATH, RESULTS, SCORES_PATH, SEED, WEB_DATA
+from pipeline.common import (
+    DATA,
+    LABELS_PATH,
+    NEURON_ROI_PATH,
+    NEURONS_PATH,
+    RESULTS,
+    SCORES_PATH,
+    SEED,
+    TYPE_EDGES_PATH,
+    WEB_DATA,
+)
 from pipeline.compute_features import GRAPH_FEATURES
 from pipeline.ground_truth import SEX_RELATED
 from pipeline.model_diagnostics import DIAGNOSTICS_PATH, SHAP_PATH
@@ -316,9 +326,12 @@ def summary(graph, types: pd.DataFrame, neurons: pd.DataFrame) -> dict:
     read = lambda name: json.loads((RESULTS / name).read_text(encoding="utf-8"))  # noqa: E731
     ablation = json.loads(ABLATION_PATH.read_text(encoding="utf-8"))
     counts = types["label"].value_counts()
+    pairs = pd.read_parquet(TYPE_EDGES_PATH, columns=["weight"])["weight"]
     return {
         "dataset": "male-cns:v1.0",
         "nTypes": int(graph.vcount()),
+        "nTypePairs": int(len(pairs)),
+        "typePairSynapses": int(pairs.sum()),
         "nEdges": int(graph.ecount()),
         "edgeSynapses": int(sum(graph.es["weight"])),
         "nTypedNeurons": int(len(neurons)),

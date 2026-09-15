@@ -40,7 +40,6 @@ CURVE_POINTS = 400
 CALIBRATION_BINS = 10
 HISTOGRAM_BINS = 50
 TOP_FRACTIONS = (0.01, 0.05, 0.10)
-N_TOP_FEATURES = 25
 BEESWARM_FEATURES = 12
 BEESWARM_ISOMORPHIC = 1000
 # Neuropils with fewer synapses than this are left out of the map-versus-annotation correlation.
@@ -137,7 +136,7 @@ def feature_group(name: str) -> str:
 
 
 def attribution_summary(values: pd.DataFrame, y: np.ndarray) -> dict:
-    """Mean absolute SHAP per feature and per feature group, and mean signed SHAP within each class."""
+    """Mean absolute SHAP per feature (all features, most important first) and per feature group, with mean signed SHAP within each class."""
     importance = values.abs().mean().sort_values(ascending=False)
     groups = importance.groupby(importance.index.map(feature_group)).sum()
     positive, negative = values[y == 1].mean(), values[y == 0].mean()
@@ -151,7 +150,7 @@ def attribution_summary(values: pd.DataFrame, y: np.ndarray) -> dict:
                 "mean_shap_sex_related": round(float(positive[f]), 5),
                 "mean_shap_isomorphic": round(float(negative[f]), 5),
             }
-            for f in importance.index[:N_TOP_FEATURES]
+            for f in importance.index
         ],
     }
 
