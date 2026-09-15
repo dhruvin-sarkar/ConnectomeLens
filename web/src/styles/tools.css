@@ -1854,6 +1854,11 @@
   .recap-round {
     width: 2.5rem;
   }
+
+  .recap-p {
+    flex-basis: 100%;
+    padding-left: 0.95rem;
+  }
 }
 
 @media (hover: none) and (pointer: coarse) {

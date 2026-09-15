@@ -64,10 +64,18 @@ function Intro({ pool, types, onStart }) {
           Two neurons from the male fly&apos;s nervous system, reconstructed synapse by synapse. One belongs to a cell
           type Janelia annotates as dimorphic or male-specific. Can you tell which from its shape?
         </p>
+        <div className="game-start">
+          <button type="button" className="button button-large" onClick={onStart}>
+            Play {ROUNDS} rounds
+          </button>
+          <p className="game-keys">
+            Keyboard: <kbd>A</kbd> or <kbd>B</kbd> to pick, <kbd>Enter</kbd> for the next round
+          </p>
+        </div>
         <ol className="game-steps">
           <li>
-            <strong>Compare the pair.</strong> Both types come from the same superclass and have the largest share of
-            their synapses in the same neuropil, so location will not give it away. Drag either neuron to rotate it.
+            <strong>Compare the pair.</strong> Both types share a superclass and the neuropil holding the largest share
+            of their synapses, so location will not give it away. Drag either neuron to rotate it.
           </li>
           <li>
             <strong>Pick the sex-related one.</strong> The other is annotated isomorphic.
@@ -77,14 +85,6 @@ function Intro({ pool, types, onStart }) {
             have picked correctly.
           </li>
         </ol>
-        <div className="game-start">
-          <button type="button" className="button button-large" onClick={onStart}>
-            Play {ROUNDS} rounds
-          </button>
-          <p className="game-keys">
-            Keyboard: <kbd>A</kbd> or <kbd>B</kbd> to pick, <kbd>Enter</kbd> for the next round
-          </p>
-        </div>
       </div>
       {sample && (
         <figure className="game-intro-figure">
@@ -96,7 +96,7 @@ function Intro({ pool, types, onStart }) {
           />
           <figcaption>
             One neuron of <TypeLink name={sample.t} />, annotated <LabelMark label={sample.l} />. It is not in the game,
-            where both neurons are drawn in white.
+            where both neurons are drawn in white until the answer is shown.
           </figcaption>
         </figure>
       )}
@@ -138,12 +138,21 @@ function Contender({ letter, type, revealed, chosen, onChoose }) {
   if (revealed) classes.push(answer ? `is-answer tone-${type.l}` : "is-other");
   if (chosen) classes.push(answer ? "is-chosen-right" : "is-chosen-wrong");
   return (
-    <article className={classes.join(" ")} aria-label={`Neuron ${letter}`}>
-      <SkeletonPlate bodyId={type.b} className="contender-plate" description={`Neuron ${letter}, drag to rotate`}>
+    <article className={classes.join(" ")} aria-label={chosen ? `Neuron ${letter}, your pick` : `Neuron ${letter}`}>
+      <SkeletonPlate
+        bodyId={type.b}
+        label={revealed ? type.l : "isomorphic"}
+        className="contender-plate"
+        description={`Neuron ${letter}, drag to rotate`}
+      >
         <span className="contender-letter" aria-hidden="true">
           {letter}
         </span>
-        {chosen && <span className="contender-pick">Your pick</span>}
+        {chosen && (
+          <span className="contender-pick" aria-hidden="true">
+            Your pick
+          </span>
+        )}
       </SkeletonPlate>
       <div className="contender-foot">
         {revealed ? (
@@ -287,7 +296,7 @@ function Finish({ rounds, results, types, onRestart }) {
                     {[answer, other].map((t) => (
                       <td key={t.t}>
                         <span className="recap-type">
-                          <span className={`dot ${t.l}`} title={LABELS[t.l]} />
+                          <span className={`dot ${t.l}`} role="img" aria-label={LABELS[t.l]} />
                           <TypeLink name={t.t} />
                           <span className="recap-p">{probability(t.p)}</span>
                         </span>
@@ -302,8 +311,8 @@ function Finish({ rounds, results, types, onRestart }) {
           </table>
         </div>
         <p className="recap-note">
-          Dots show Janelia&apos;s annotation: green for male-specific, teal for dimorphic, grey for isomorphic. Magenta
-          numbers are the classifier&apos;s probabilities. Open any type in the <a href={href("atlas")}>atlas</a> to see
+          Janelia&apos;s annotation is marked in green for male-specific, teal for dimorphic and grey for isomorphic.
+          Magenta numbers are the classifier&apos;s probabilities. Open any type in the <a href={href("atlas")}>atlas</a> to see
           how it was scored.
         </p>
       </div>
@@ -319,6 +328,8 @@ export default function Game() {
   const [results, setResults] = useState([]);
   const seen = useRef(new Set());
   const prompt = useRef(null);
+  const play = useRef(null);
+  const nextButton = useRef(null);
 
   const pool = data.value?.[0];
   const types = data.value?.[1];
@@ -353,13 +364,19 @@ export default function Game() {
   }, [rounds, round]);
 
   useEffect(() => {
+    if (revealed) nextButton.current?.focus();
+  }, [revealed]);
+
+  useEffect(() => {
     if (!pair) return undefined;
     const onKey = (event) => {
       if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.target.closest?.("input, textarea, select")) return;
+      const { target } = event;
+      const inGame = target === document.body || (target instanceof Node && play.current?.contains(target));
+      if (!inGame || target.closest?.("a, input, textarea, select")) return;
       const key = event.key.toLowerCase();
       if (!revealed && (key === "a" || key === "b")) guess(key === "a" ? 0 : 1);
-      else if (revealed && event.key === "Enter" && event.target.tagName !== "BUTTON" && event.target.tagName !== "A") next();
+      else if (revealed && event.key === "Enter" && target.tagName !== "BUTTON") next();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -405,7 +422,7 @@ export default function Game() {
   if (revealed) verdictState = correct ? "is-right" : "is-wrong";
 
   return (
-    <div className="game game-play">
+    <div className="game game-play" ref={play}>
       <div className="game-bar">
         <p className="game-progress">
           Round <strong>{round + 1}</strong> of {ROUNDS}
@@ -425,7 +442,7 @@ export default function Game() {
       <div className="duel">
         {pair.map((type, i) => (
           <Contender
-            key={`${round}-${type.t}`}
+            key={LETTERS[i]}
             letter={LETTERS[i]}
             type={type}
             revealed={revealed}
@@ -434,14 +451,20 @@ export default function Game() {
           />
         ))}
       </div>
-      <div className={`game-verdict ${verdictState}`} aria-live="polite">
+      <div className={`game-verdict ${verdictState}`}>
         {revealed ? (
           <>
-            <div className="verdict-copy">
+            <div className="verdict-copy" id="game-verdict">
               <p className="verdict-title">{correct ? "Right" : "Not this time"}</p>
               <p className="verdict-body">{verdictText(pair, answer, correct, modelCorrect)}</p>
             </div>
-            <button type="button" className="button button-large verdict-next" onClick={next} autoFocus>
+            <button
+              type="button"
+              className="button button-large verdict-next"
+              onClick={next}
+              ref={nextButton}
+              aria-describedby="game-verdict"
+            >
               {round + 1 === ROUNDS ? "See your score" : "Next round"}
               <kbd aria-hidden="true">Enter</kbd>
             </button>
