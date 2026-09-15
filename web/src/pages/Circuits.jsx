@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ErrorNote, LabelMark, Loading } from "../components/ui.jsx";
-import { RouteChain, RoutePlate, shareProduct } from "../figures/Neurons.jsx";
+import { RouteChain, RoutePlate } from "../figures/Neurons.jsx";
 import { loadRoutes, loadTypes } from "../lib/data.js";
-import { outcomeText } from "../lib/format.js";
+import { outcomeText, shareProduct } from "../lib/format.js";
 import { useAll } from "../lib/hooks.js";
 import { href, replaceParams } from "../lib/route.js";
 
@@ -74,9 +74,10 @@ function RouteFacts({ route, baseline }) {
 
 function AblationResult({ removed, record, ablation, onRestore, buttonRef }) {
   const detour = ablation.route;
-  const original = new Set(record.route.types);
+  const baseline = record.route;
+  const original = new Set(baseline?.types ?? []);
   const added = detour ? detour.types.filter((t) => !original.has(t)) : [];
-  const ratio = detour ? Math.exp(detour.cost - record.route.cost) : null;
+  const ratio = detour && baseline ? Math.exp(detour.cost - baseline.cost) : null;
   return (
     <div className="ablation-result">
       <p className="ablation-title">
@@ -107,7 +108,8 @@ export default function Circuits({ params }) {
 
   const routes = data.value?.[0];
   const count = routes?.length ?? 0;
-  const index = count ? Math.min(count - 1, Math.max(0, Number(params.get("route") ?? 0) || 0)) : 0;
+  const requested = Math.trunc(Number(params.get("route") ?? 0));
+  const index = count && Number.isFinite(requested) ? Math.min(count - 1, Math.max(0, requested)) : 0;
   const removed = params.get("removed");
   const view = `${index}-${removed ?? ""}`;
 
@@ -125,8 +127,8 @@ export default function Circuits({ params }) {
       restoreRef.current?.focus();
       return;
     }
-    const buttons = detailRef.current?.querySelectorAll(".chain-remove") ?? [];
-    const match = [...buttons].find((b) => b.closest("li")?.querySelector(".chain-name")?.textContent === target);
+    const buttons = detailRef.current?.querySelectorAll(".chain-remove[data-type]") ?? [];
+    const match = [...buttons].find((b) => b.dataset.type === target);
     (match ?? detailRef.current?.querySelector("h2"))?.focus();
   }, [view]);
 
@@ -147,7 +149,7 @@ export default function Circuits({ params }) {
 
   const types = data.value[1];
   const record = routes[index];
-  const ablation = removed ? record.ablations[removed] : null;
+  const ablation = removed && record.route ? (record.ablations?.[removed] ?? null) : null;
   const shown = ablation ? ablation.route : record.route;
   const title = splitTitle(record.title);
   const pinnedStep = pinned?.view === view ? pinned.step : null;
@@ -187,9 +189,9 @@ export default function Circuits({ params }) {
       "Each connection lists its synapses and the share of the upstream type's output it carries. Remove a middle step to delete that cell type from the graph and search for the best route that remains.";
   }
 
-  const announcement = ablation
-    ? `${removed} removed. ${capitalize(outcomeText(ablation.outcome))}.`
-    : `${title.name}, ${hops(record.route.hops)}.`;
+  let announcement = `${title.name}, no directed route.`;
+  if (ablation) announcement = `${removed} removed. ${capitalize(outcomeText(ablation.outcome))}.`;
+  else if (record.route) announcement = `${title.name}, ${hops(record.route.hops)}.`;
 
   return (
     <div className="circuits">
@@ -305,6 +307,7 @@ export default function Circuits({ params }) {
                 types={types}
                 onRemove={ablation ? null : remove}
                 onFocus={setHover}
+                focused={hover}
               />
               <p className="route-key">
                 <span>p is the classifier&apos;s out-of-fold probability that a type is sex-related. Dots show the annotation:</span>
