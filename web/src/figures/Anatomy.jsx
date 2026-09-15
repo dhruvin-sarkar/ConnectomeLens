@@ -117,19 +117,23 @@ export function NeuropilAgreementFigure({ diagnostics, number }) {
                     fill={css(stain("merge", p.score / maxScore, p.annotated_share / maxShare))}
                     className="agreement-dot"
                   />
-                  {labels.has(p.neuropil) && (
-                    <text
-                      x={labels.get(p.neuropil).x}
-                      y={y(p.score) + labels.get(p.neuropil).dy}
-                      dy="0.32em"
-                      textAnchor={labels.get(p.neuropil).anchor}
-                      className="agreement-label"
-                    >
-                      {p.neuropil}
-                    </text>
-                  )}
                 </g>
               ))}
+            {/* Labels are drawn after every circle so no circle covers them. */}
+            <g aria-hidden="true" pointerEvents="none">
+              {top.map((p) => (
+                <text
+                  key={p.neuropil}
+                  x={labels.get(p.neuropil).x}
+                  y={y(p.score) + labels.get(p.neuropil).dy}
+                  dy="0.32em"
+                  textAnchor={labels.get(p.neuropil).anchor}
+                  className="agreement-label"
+                >
+                  {p.neuropil}
+                </text>
+              ))}
+            </g>
           </svg>
         )}
         {hover && (

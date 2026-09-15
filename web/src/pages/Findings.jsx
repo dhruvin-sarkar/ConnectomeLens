@@ -1,20 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { ErrorNote, Loading, REPO, REPORT_PDF, Segmented, Sidenote, TypeLink } from "../components/ui.jsx";
 import { NeuropilAgreementFigure, TopologyFigure } from "../figures/Anatomy.jsx";
 import { AttributionFigure, CommunitiesFigure, FeatureSetsFigure } from "../figures/Attribution.jsx";
-import BrainStain from "../figures/BrainStain.jsx";
 import LimitsFigure from "../figures/Limits.jsx";
-import { CandidatesFigure, CircuitFigure, shareProduct } from "../figures/Neurons.jsx";
 import { NullDistribution, RewireDemo } from "../figures/NullModel.jsx";
 import RankingExplorer from "../figures/RankingExplorer.jsx";
 import TypeCensus from "../figures/TypeCensus.jsx";
 import WiringMap from "../figures/WiringMap.jsx";
 import { loadCandidates, loadDiagnostics, loadExplanations, loadMap, loadRoutes, loadSummary, loadTypes } from "../lib/data.js";
-import { featureLabel, integer, millions, neuropilName, percent } from "../lib/format.js";
-import { useAll } from "../lib/hooks.js";
+import { featureLabel, integer, millions, neuropilName, percent, shareProduct } from "../lib/format.js";
+import { prefersReducedMotion, useAll } from "../lib/hooks.js";
 import { href } from "../lib/route.js";
 
-const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+// three.js is only needed by the anatomy plates, so it loads after the page text.
+const BrainStain = lazy(() => import("../figures/BrainStain.jsx"));
+const CandidatesFigure = lazy(() => import("../figures/Neurons.jsx").then((m) => ({ default: m.CandidatesFigure })));
+const CircuitFigure = lazy(() => import("../figures/Neurons.jsx").then((m) => ({ default: m.CircuitFigure })));
+
+function scrollTo(id) {
+  const chapter = document.getElementById(id);
+  if (!chapter) return;
+  chapter.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  chapter.querySelector(".chapter-title")?.focus({ preventScroll: true });
+}
+
+function PendingFigure({ className = "" }) {
+  return (
+    <div className={`figure figure-field figure-pending ${className}`}>
+      <p className="viewer-status" role="status">
+        Loading anatomy
+      </p>
+    </div>
+  );
+}
 
 /** "a, b and c" from rendered items. */
 function Series({ items }) {
@@ -33,10 +51,12 @@ function Hero({ summary }) {
   return (
     <header className="hero">
       <div className="hero-plate">
-        <BrainStain
-          mode={channel}
-          label="Rotating three-dimensional model of the male fly brain, neuropils colored by classifier probability and annotation"
-        />
+        <Suspense fallback={<div className="viewer brain-stain" />}>
+          <BrainStain
+            mode={channel}
+            label="Rotating three-dimensional model of the male fly brain, neuropils colored by classifier probability and annotation"
+          />
+        </Suspense>
       </div>
       <div className="hero-copy">
         <h1 className="hero-title">Wired Different</h1>
@@ -85,7 +105,7 @@ function Hero({ summary }) {
 function Chapter({ id, title, children }) {
   return (
     <section className="chapter" id={id} aria-labelledby={`${id}-title`}>
-      <h2 className="chapter-title" id={`${id}-title`}>
+      <h2 className="chapter-title" id={`${id}-title`} tabIndex={-1}>
         {title}
       </h2>
       {children}
@@ -422,7 +442,9 @@ export default function Findings() {
             neurons are common in the circuits the model relies on, so it is not independent confirmation.
           </p>
         </TextBlock>
-        <CandidatesFigure candidates={candidates} types={types} explanations={explanations} summary={summary} number={11} />
+        <Suspense fallback={<PendingFigure className="figure-pending-candidates" />}>
+          <CandidatesFigure candidates={candidates} types={types} explanations={explanations} summary={summary} number={11} />
+        </Suspense>
       </Chapter>
 
       <Chapter id="circuit" title="A circuit the graph recovers on its own">
@@ -439,7 +461,9 @@ export default function Findings() {
             That describes redundancy in the wiring, not what a fly would do.
           </p>
         </TextBlock>
-        <CircuitFigure routes={routes} types={types} number={12} />
+        <Suspense fallback={<PendingFigure className="figure-pending-circuit" />}>
+          <CircuitFigure routes={routes} types={types} number={12} />
+        </Suspense>
       </Chapter>
 
       <Chapter id="claims" title="What this shows, and what it does not">

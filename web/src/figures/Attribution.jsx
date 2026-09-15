@@ -2,7 +2,7 @@ import { interpolateRgb, scaleLinear } from "d3";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Figure, Segmented, TypeLink } from "../components/ui.jsx";
 import { PAPER } from "../lib/color.js";
-import { LABELS, featureLabel, integer, isUnassignedRegion, neuropilName, percent } from "../lib/format.js";
+import { LABELS, SET_LABELS, featureLabel, integer, isUnassignedRegion, neuropilName, percent } from "../lib/format.js";
 import { useSize } from "../lib/hooks.js";
 import { AxisBottom, SANS, Tooltip, prepareCanvas } from "./chart.jsx";
 
@@ -224,17 +224,7 @@ export function AttributionFigure({ diagnostics, number }) {
   );
 }
 
-export const SET_LABELS = {
-  full: "All features",
-  full_without_community: "All features except community",
-  static_only: "Neuropil and transmitter",
-  neuropil_only: "Neuropil output shares",
-  topology_and_transmitter: "Topology and transmitter",
-  topology_only: "Graph topology",
-  community_only: "Wiring community alone",
-  topology_without_community: "Topology without community",
-  transmitter_only: "Transmitter alone",
-};
+export { SET_LABELS };
 
 export function FeatureSetsFigure({ diagnostics, baseline, number }) {
   const wrap = useRef(null);

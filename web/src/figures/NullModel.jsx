@@ -53,6 +53,9 @@ export function RewireDemo({ nEdges }) {
   const [count, setCount] = useState(0);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
   const seed = useRef(7);
+  const frame = useRef(0);
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
   const random = () => {
     seed.current = (seed.current * 16807) % 2147483647;
@@ -70,7 +73,7 @@ export function RewireDemo({ nEdges }) {
       const t = Math.min(1, (now - begin) / duration);
       setPhase(t);
       if (t < 1) {
-        requestAnimationFrame(tick);
+        frame.current = requestAnimationFrame(tick);
         return;
       }
       setEdges((current) => current.map((e, k) => (k === chosen.i ? chosen.next : k === chosen.j ? chosen.other : e)));
@@ -78,7 +81,7 @@ export function RewireDemo({ nEdges }) {
       setSwap(null);
       setPhase(0);
     };
-    requestAnimationFrame(tick);
+    frame.current = requestAnimationFrame(tick);
   };
 
   useEffect(() => {

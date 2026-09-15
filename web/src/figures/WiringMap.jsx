@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Figure, Segmented, TypeLink } from "../components/ui.jsx";
 import { loadWiring } from "../lib/data.js";
 import { LABELS, SEX_RELATED, integer, probability, superclassName } from "../lib/format.js";
-import { useSize } from "../lib/hooks.js";
+import { prefersReducedMotion, useSize } from "../lib/hooks.js";
 import { href } from "../lib/route.js";
 import { SANS, Tooltip, prepareCanvas } from "./chart.jsx";
 
@@ -31,6 +31,7 @@ export default function WiringMap({ types, xy, number }) {
   const [query, setQuery] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [wiring, setWiring] = useState(null);
+  const [wiringError, setWiringError] = useState(false);
   const zoomBehavior = useRef(null);
   const coarse = useMemo(() => window.matchMedia("(pointer: coarse)").matches, []);
 
@@ -92,6 +93,13 @@ export default function WiringMap({ types, xy, number }) {
     return { inputs: pairs(wiring.inputs[selected]), outputs: pairs(wiring.outputs[selected]) };
   }, [selected, wiring]);
 
+  // Brightest points are drawn last so they sit on top.
+  const drawOrder = useMemo(() => {
+    if (mode === "merge") return null;
+    const rank = (i) => (mode === "prediction" ? types[i].p : Number(SEX_RELATED.has(types[i].l)));
+    return types.map((_, i) => i).sort((a, b) => rank(a) - rank(b));
+  }, [types, mode]);
+
   useEffect(() => {
     if (!width) return;
     const ctx = prepareCanvas(canvas.current, width, height);
@@ -120,9 +128,7 @@ export default function WiringMap({ types, xy, number }) {
       }
       ctx.globalCompositeOperation = "source-over";
     } else {
-      const rank = (i) => (mode === "prediction" ? types[i].p : Number(SEX_RELATED.has(types[i].l)));
-      const order = types.map((_, i) => i).sort((a, b) => rank(a) - rank(b));
-      for (const i of order) {
+      for (const i of drawOrder) {
         const [color, grow] = channelStyle(types[i], mode);
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -140,9 +146,9 @@ export default function WiringMap({ types, xy, number }) {
         const cx = transform.applyX(scale.x(x));
         const half = ctx.measureText(label).width / 2 + 3;
         // Nudge a label up or down when it would collide with one already drawn.
-        const cy = [0, -13, 13, -26, 26]
+        const cy = [0, -16, 16, -32, 32]
           .map((dy) => transform.applyY(scale.y(y)) + dy)
-          .find((top) => !boxes.some((b) => Math.abs(b.x - cx) < b.half + half && Math.abs(b.y - top) < 13));
+          .find((top) => !boxes.some((b) => Math.abs(b.x - cx) < b.half + half && Math.abs(b.y - top) < 16));
         if (cy == null) continue;
         boxes.push({ x: cx, y: cy, half });
         ctx.lineWidth = 3;
@@ -181,7 +187,7 @@ export default function WiringMap({ types, xy, number }) {
       ctx.arc(sx, sy, radius + 6, 0, 2 * Math.PI);
       ctx.stroke();
     }
-  }, [width, height, transform, mode, types, xy, scale, centroids, selected, neighbors]);
+  }, [width, height, transform, mode, types, xy, scale, centroids, selected, neighbors, drawOrder]);
 
   const locate = (event) => {
     const rect = canvas.current.getBoundingClientRect();
@@ -195,7 +201,9 @@ export default function WiringMap({ types, xy, number }) {
 
   const choose = (i) => {
     setSelected(i);
-    if (i != null && !wiring) loadWiring().then(setWiring);
+    if (i == null || wiring) return;
+    setWiringError(false);
+    loadWiring().then(setWiring, () => setWiringError(true));
   };
 
   const search = (event) => {
@@ -212,12 +220,12 @@ export default function WiringMap({ types, xy, number }) {
     const y = scale.y(xy[2 * match + 1]);
     select(canvas.current)
       .transition()
-      .duration(750)
+      .duration(prefersReducedMotion() ? 0 : 750)
       .call(zoomBehavior.current.transform, zoomIdentity.translate(width / 2 - k * x, height / 2 - k * y).scale(k));
   };
 
   const reset = () => {
-    select(canvas.current).transition().duration(600).call(zoomBehavior.current.transform, zoomIdentity);
+    select(canvas.current).transition().duration(prefersReducedMotion() ? 0 : 600).call(zoomBehavior.current.transform, zoomIdentity);
     setSelected(null);
   };
 
@@ -273,7 +281,9 @@ export default function WiringMap({ types, xy, number }) {
           <button type="submit" className="button button-field-quiet">
             Find
           </button>
-          {notFound && <span className="map-search-note">No cell type starts with “{query.trim()}”.</span>}
+          <span className="map-search-note" role="status">
+            {notFound ? `No cell type starts with “${query.trim()}”.` : ""}
+          </span>
         </form>
         <button type="button" className="button button-field-quiet" onClick={reset} disabled={transform.k === 1 && selected == null}>
           Reset view
@@ -300,31 +310,33 @@ export default function WiringMap({ types, xy, number }) {
           </Tooltip>
         )}
       </div>
-      {chosen && (
-        <div className="map-detail" aria-live="polite">
-          <div>
-            <p className="map-detail-name">{chosen.t}</p>
-            <p>
-              <span className={`label-mark label-${chosen.l}`}>
-                <span className="dot" />
-                {LABELS[chosen.l]}
-              </span>
-              , probability {probability(chosen.p)}, rank {integer(selected + 1)} of {integer(types.length)}
-            </p>
-            <a className="button button-field" href={href("atlas", { type: chosen.t })}>
-              Open in the atlas
-            </a>
+      <div aria-live="polite">
+        {chosen && (
+          <div className="map-detail">
+            <div>
+              <p className="map-detail-name">{chosen.t}</p>
+              <p>
+                <span className={`label-mark label-${chosen.l}`}>
+                  <span className="dot" />
+                  {LABELS[chosen.l]}
+                </span>
+                , probability {probability(chosen.p)}, rank {integer(selected + 1)} of {integer(types.length)}
+              </p>
+              <a className="button button-field" href={href("atlas", { type: chosen.t })}>
+                Open in the atlas
+              </a>
+            </div>
+            {neighbors ? (
+              <>
+                <PartnerList title="Strongest inputs" list={neighbors.inputs} types={types} />
+                <PartnerList title="Strongest outputs" list={neighbors.outputs} types={types} />
+              </>
+            ) : (
+              <p className="loading loading-field">{wiringError ? "Partners could not be loaded." : "Loading partners"}</p>
+            )}
           </div>
-          {neighbors ? (
-            <>
-              <PartnerList title="Strongest inputs" list={neighbors.inputs} types={types} />
-              <PartnerList title="Strongest outputs" list={neighbors.outputs} types={types} />
-            </>
-          ) : (
-            <p className="loading loading-field">Loading partners</p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </Figure>
   );
 }

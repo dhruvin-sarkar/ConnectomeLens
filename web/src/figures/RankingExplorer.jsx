@@ -130,7 +130,15 @@ export default function RankingExplorer({ diagnostics, number, nSexRelated, base
             ))}
             <p className="series-note">AUC-PR; ranking at random gives {baseline.toFixed(3)}</p>
           </fieldset>
-          <Slider label="Types flagged" min={0} max={curve.k.length - 1} value={i} onChange={setIndex} format={(v) => integer(curve.k[v])} />
+          <Slider
+            label="Types flagged"
+            min={0}
+            max={curve.k.length - 1}
+            value={i}
+            onChange={setIndex}
+            format={(v) => integer(curve.k[v])}
+            valueText={`${integer(k)} types flagged, ${integer(tp)} annotated sex-related, precision ${percent(precision)}`}
+          />
           <p className="ranking-readout">
             Of the top <strong>{integer(k)}</strong> types, <strong>{integer(tp)}</strong> are annotated sex-related.
             Precision is <strong>{percent(precision)}</strong>, and they are <strong>{percent(recall)}</strong> of all{" "}

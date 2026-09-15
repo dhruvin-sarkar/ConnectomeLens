@@ -126,9 +126,13 @@ export default function TypeCensus({ types, number }) {
       if (t < 1) frame = requestAnimationFrame(draw);
       else setHeight(target.height);
     };
+    let cancelled = false;
     frame = requestAnimationFrame(draw);
-    document.fonts?.ready.then(() => !instant || draw(performance.now()));
-    return () => cancelAnimationFrame(frame);
+    document.fonts?.ready.then(() => cancelled || !instant || draw(performance.now()));
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
   }, [target, types, width, pitch, mode]);
 
   const onMove = (event) => {
@@ -165,7 +169,7 @@ export default function TypeCensus({ types, number }) {
       }
       caption={
         <>
-          Each square is one cell type in the male central nervous system.{" "}
+          Each tile is one cell type in the male central nervous system.{" "}
           <span className="label-mark label-male_specific">
             <span className="dot" />
             {integer(counts.male_specific)} male-specific

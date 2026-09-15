@@ -368,8 +368,9 @@
     min-height: 0;
   }
 
+  /* The brain is about twice as wide as tall, so the plate follows the width. */
   .hero-plate {
-    height: clamp(20rem, 58svh, 34rem);
+    height: clamp(14rem, 62vw, 30rem);
     margin-inline: calc(-1 * var(--gutter));
   }
 
@@ -381,9 +382,75 @@
     padding-block: 2.5rem 3.5rem;
   }
 
+  .hero-deck {
+    max-width: 30ch;
+  }
+
   .claims,
   .explore,
   .reproduce {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .hero-legend {
+    gap: 0.6rem;
+  }
+
+  .hero-legend .segmented {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    width: 100%;
+  }
+
+  .hero-legend .segmented button {
+    justify-content: center;
+    min-height: 2.5rem;
+  }
+
+  .hero-legend p {
+    flex-basis: 100%;
+  }
+
+  .hero-copy {
+    padding-block: 2rem 3rem;
+  }
+
+  .hero-deck {
+    margin-top: 1.25rem;
+  }
+
+  .hero-actions {
+    margin-top: 1.75rem;
+  }
+
+  .hero-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .chapter-title {
+    margin-bottom: 1.75rem;
+  }
+
+  .notes {
+    gap: 1.25rem;
+  }
+
+  .explore a {
+    display: inline-block;
+    padding-block: 0.2rem;
+  }
+}
+
+/* A vertical swipe over the brain scrolls the page; a sideways drag still turns it. The orbit controls set touch-action inline. */
+@media (pointer: coarse) {
+  .hero-plate canvas {
+    touch-action: pan-y !important;
+  }
+
+  .hero-legend .segmented button {
+    min-height: 2.5rem;
   }
 }

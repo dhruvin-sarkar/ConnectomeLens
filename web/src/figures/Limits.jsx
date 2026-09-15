@@ -102,6 +102,8 @@ function RankStrip({ types, named, width }) {
   }, [types]);
   const baseline = 86;
   const sorted = [...named].sort((a, b) => a.rank - b.rank);
+  // Callouts read leftwards when any of them would run past the right edge.
+  const flip = sorted.some((n) => x(n.rank) + 8 + `${n.cell_type}, rank ${integer(n.rank)}`.length * 6.8 > width);
   return (
     <svg width={width} height={height} role="img" aria-label="Ranks of annotated sex-related types and of the four named types">
       <rect x={x(1)} y={48} width={x(20) - x(1)} height={baseline - 40} className="rank-zone" />
@@ -113,8 +115,6 @@ function RankStrip({ types, named, width }) {
       ))}
       {sorted.map((n, i) => {
         const label = `${n.cell_type}, rank ${integer(n.rank)}`;
-        // Callouts near the right edge read leftwards so they stay inside the plot.
-        const flip = x(n.rank) + 8 + label.length * 6.8 > width;
         return (
           <g key={n.cell_type} transform={`translate(${x(n.rank)},${baseline})`}>
             <line y1={0} y2={18 + i * 13} className="rank-callout" />
