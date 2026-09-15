@@ -90,7 +90,12 @@ export default function BrainStain({ mode, showCord = false, onHoverRegion, onPi
         viewer.setSkeletons([{ skeleton, color, width: 2 }]);
         setDrawn({ bodyId: neuron.bodyId, cord: reachesCord(skeleton, neuropils.current) });
       },
-      (e) => live && setError(e.message),
+      (e) => {
+        if (!live) return;
+        viewer.clearSkeletons();
+        setDrawn(null);
+        setError(e.message);
+      },
     );
     return () => {
       live = false;
@@ -110,7 +115,8 @@ export default function BrainStain({ mode, showCord = false, onHoverRegion, onPi
       onHoverRegion?.(null);
       return;
     }
-    const rect = event.currentTarget.getBoundingClientRect();
+    // Hover picks are throttled, so the event may arrive after dispatch when currentTarget is already null.
+    const rect = event.target.getBoundingClientRect();
     setBounds({ width: rect.width, height: rect.height });
     setHover({ entry, x: event.clientX - rect.left, y: event.clientY - rect.top });
     onHoverRegion?.(entry);
@@ -125,7 +131,11 @@ export default function BrainStain({ mode, showCord = false, onHoverRegion, onPi
       onPick={onPickRegion ? (entry) => entry && onPickRegion(entry) : undefined}
       label={label}
     >
-      {error && <p className="viewer-status viewer-error">{error}</p>}
+      {error && (
+        <p className="viewer-status viewer-error" role="status">
+          {error}
+        </p>
+      )}
       {hover && (
         <Tooltip x={hover.x} y={hover.y} tone="field" bounds={bounds}>
           <strong>{hover.entry.name}</strong>

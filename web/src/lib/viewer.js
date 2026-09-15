@@ -12,6 +12,11 @@ export const VIEWS = {
   top: new THREE.Vector3(0.0001, 1, 0.12),
 };
 
+// Hover picks are throttled to this interval in milliseconds.
+const PICK_INTERVAL = 30;
+
+const media = (query) => (typeof window !== "undefined" && window.matchMedia ? window.matchMedia(query) : null);
+
 /**
  * One WebGL canvas showing neuropil meshes and neuron skeletons on a black field.
  *
@@ -19,10 +24,11 @@ export const VIEWS = {
  * rotates them 180° about x so that dorsal is up and the default camera faces the front of the head.
  */
 export class Viewer {
-  constructor(container, { onHover, onPick, autoRotate = false } = {}) {
+  constructor(container, { onHover, onPick, onRotateChange, autoRotate = false } = {}) {
     this.container = container;
     this.onHover = onHover;
     this.onPick = onPick;
+    this.onRotateChange = onRotateChange;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -38,14 +44,27 @@ export class Viewer {
     key.position.set(-0.4, 0.6, 1);
     this.camera.add(key);
 
+    this.reducedMotion = media("(prefers-reduced-motion: reduce)");
+    this.onMotionPreference = () => {
+      if (this.reducedMotion.matches) this.setAutoRotate(false);
+      else this.onRotateChange?.(this.controls.autoRotate, true);
+    };
+    this.reducedMotion?.addEventListener("change", this.onMotionPreference);
+
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.autoRotate = autoRotate;
+    this.controls.autoRotate = autoRotate && this.rotationAllowed;
     this.controls.autoRotateSpeed = 0.35;
     this.controls.addEventListener("start", () => {
-      this.controls.autoRotate = false;
+      this.userMoved = true;
+      this.setAutoRotate(false);
     });
+    if (media("(any-pointer: coarse)")?.matches) {
+      // One finger scrolls the page; two fingers rotate and zoom.
+      this.controls.touches = { ONE: null, TWO: THREE.TOUCH.DOLLY_ROTATE };
+      this.renderer.domElement.style.touchAction = "pan-y";
+    }
 
     this.anatomy = new THREE.Group();
     this.anatomy.rotation.x = Math.PI;
@@ -61,6 +80,8 @@ export class Viewer {
     this.pointer = new THREE.Vector2();
     this.hovered = null;
     this.active = true;
+    this.lastFit = null;
+    this.userMoved = false;
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
@@ -70,9 +91,13 @@ export class Viewer {
   }
 
   start() {
+    let last = null;
     const loop = (time) => {
       this.frame = requestAnimationFrame(loop);
-      this.controls.update();
+      // Seconds since the previous frame, capped so a stalled tab does not jump the rotation.
+      const delta = last == null ? 0 : Math.min(0.1, (time - last) / 1000);
+      last = time;
+      this.controls.update(delta);
       for (const callback of this.frameCallbacks) callback(time / 1000);
       this.renderer.render(this.scene, this.camera);
     };
@@ -87,28 +112,80 @@ export class Viewer {
     if (active) this.start();
   }
 
+  /** False when the user prefers reduced motion, in which case the view never turns by itself. */
+  get rotationAllowed() {
+    return !this.reducedMotion?.matches;
+  }
+
+  get autoRotating() {
+    return this.controls.autoRotate;
+  }
+
+  /** Start or stop the slow turntable rotation; ignored while reduced motion is preferred. */
+  setAutoRotate(on) {
+    const next = Boolean(on) && this.rotationAllowed;
+    if (this.controls.autoRotate === next) return;
+    this.controls.autoRotate = next;
+    this.onRotateChange?.(next, this.rotationAllowed);
+  }
+
   resize() {
     const { clientWidth: width, clientHeight: height } = this.container;
     if (!width || !height) return;
     this.renderer.setSize(width, height, false);
-    this.camera.aspect = width / height;
+    const aspect = width / height;
+    if (aspect === this.camera.aspect) return;
+    this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
+    if (this.lastFit && !this.userMoved) {
+      const direction = this.camera.position.clone().sub(this.controls.target);
+      this.fit(this.lastFit.objects, direction.lengthSq() > 0 ? direction : this.lastFit.direction, this.lastFit.padding);
+    }
   }
 
   bindPointer() {
     const canvas = this.renderer.domElement;
     let down = null;
+    let pending = null;
+    let timer = 0;
+    let lastPick = 0;
+    const hover = () => {
+      timer = 0;
+      lastPick = performance.now();
+      this.setPointer(pending);
+      const hit = this.pick();
+      if (hit !== this.hovered) {
+        this.hovered = hit;
+        canvas.style.cursor = hit && this.onPick ? "pointer" : "";
+      }
+      this.onHover?.(hit, pending);
+    };
+    const cancel = () => {
+      clearTimeout(timer);
+      timer = 0;
+    };
+    const clear = () => {
+      cancel();
+      if (this.hovered === null) return;
+      this.hovered = null;
+      canvas.style.cursor = "";
+      this.onHover?.(null);
+    };
     this.handlers = {
       move: (event) => {
-        this.setPointer(event);
-        const hit = this.pick();
-        if (hit !== this.hovered) {
-          this.hovered = hit;
-          canvas.style.cursor = hit && this.onPick ? "pointer" : "";
+        if (!this.onHover && !this.onPick) return;
+        if (event.buttons) {
+          clear();
+          return;
         }
-        this.onHover?.(hit, event);
+        pending = event;
+        if (timer) return;
+        const wait = PICK_INTERVAL - (performance.now() - lastPick);
+        if (wait <= 0) hover();
+        else timer = setTimeout(hover, wait);
       },
       leave: () => {
+        cancel();
         this.hovered = null;
         this.onHover?.(null);
       },
@@ -116,11 +193,14 @@ export class Viewer {
         down = [event.clientX, event.clientY];
       },
       up: (event) => {
-        if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 4) return;
+        const start = down;
+        down = null;
+        if (!start || Math.hypot(event.clientX - start[0], event.clientY - start[1]) > 4) return;
         this.setPointer(event);
         this.onPick?.(this.pick());
       },
     };
+    this.cancelHover = cancel;
     canvas.addEventListener("pointermove", this.handlers.move);
     canvas.addEventListener("pointerleave", this.handlers.leave);
     canvas.addEventListener("pointerdown", this.handlers.down);
@@ -140,18 +220,34 @@ export class Viewer {
     return hit ? hit.object.userData.entry : null;
   }
 
-  setNeuropils(neuropils) {
+  disposeNeuropils() {
     for (const mesh of this.neuropilMeshes) {
+      // The wrapper geometry is per viewer; its attributes belong to the shared cache and stay intact.
+      mesh.geometry.dispose();
       mesh.material.dispose();
       this.neuropilGroup.remove(mesh);
     }
+    if (this.lastFit?.objects?.some((object) => this.neuropilMeshes.includes(object))) this.lastFit = null;
+    this.neuropilMeshes = [];
+  }
+
+  setNeuropils(neuropils) {
+    this.disposeNeuropils();
     this.neuropilMeshes = neuropils.map((entry) => {
+      const source = entry.geometry;
+      // Renderers attach dispose listeners to geometries, so each viewer draws through its own wrapper.
+      const geometry = new THREE.BufferGeometry();
+      geometry.setIndex(source.index);
+      for (const [name, attribute] of Object.entries(source.attributes)) geometry.setAttribute(name, attribute);
+      geometry.boundingBox = source.boundingBox?.clone() ?? null;
+      geometry.boundingSphere = source.boundingSphere?.clone() ?? null;
       const material = new THREE.MeshLambertMaterial({ color: 0x222222, side: THREE.DoubleSide });
-      const mesh = new THREE.Mesh(entry.geometry, material);
+      const mesh = new THREE.Mesh(geometry, material);
       mesh.userData = { entry, pickable: true };
       this.neuropilGroup.add(mesh);
       return mesh;
     });
+    this.fit();
   }
 
   /**
@@ -207,6 +303,7 @@ export class Viewer {
   }
 
   clearSkeletons() {
+    if (this.lastFit?.objects?.some((object) => this.skeletons.includes(object))) this.lastFit = null;
     for (const line of this.skeletons) {
       line.geometry.dispose();
       line.material.dispose();
@@ -220,7 +317,10 @@ export class Viewer {
     this.anatomy.rotation.x = Math.PI - angle;
   }
 
-  /** Point the camera from ``direction`` at the bounding box of ``objects`` (all visible content by default). */
+  /**
+   * Point the camera from ``direction`` at the bounding box of ``objects`` (all visible content by default).
+   * The framing is kept and reapplied when the canvas changes shape, until the user moves the camera.
+   */
   fit(objects, direction = VIEWS.front, padding = 1.08) {
     const box = new THREE.Box3();
     this.anatomy.updateMatrixWorld(true);
@@ -228,6 +328,8 @@ export class Viewer {
       box.expandByObject(object);
     }
     if (box.isEmpty()) return;
+    this.lastFit = { objects: objects ? [...objects] : null, direction: direction.clone(), padding };
+    this.userMoved = false;
 
     // Extent of the box corners along the camera's right, up and viewing axes.
     const view = direction.clone().normalize();
@@ -267,13 +369,16 @@ export class Viewer {
   dispose() {
     cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();
+    this.reducedMotion?.removeEventListener("change", this.onMotionPreference);
+    this.cancelHover();
     const canvas = this.renderer.domElement;
     canvas.removeEventListener("pointermove", this.handlers.move);
     canvas.removeEventListener("pointerleave", this.handlers.leave);
     canvas.removeEventListener("pointerdown", this.handlers.down);
     canvas.removeEventListener("pointerup", this.handlers.up);
     this.clearSkeletons();
-    for (const mesh of this.neuropilMeshes) mesh.material.dispose();
+    this.disposeNeuropils();
+    this.frameCallbacks.clear();
     this.controls.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
