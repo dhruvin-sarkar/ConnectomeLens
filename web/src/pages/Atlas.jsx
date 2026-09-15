@@ -33,7 +33,7 @@ const LANDMARKS = [
   ["AOTU008", "Shown in Google Research's announcement as differing between the sexes"],
 ];
 
-function TypeIndex({ types, selected, onSelect }) {
+function TypeIndex({ types, selected, onSelect, onOpen }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [superclass, setSuperclass] = useState("");
@@ -41,6 +41,8 @@ function TypeIndex({ types, selected, onSelect }) {
   const scroller = useRef(null);
   const { height } = useSize(scroller);
   const [scrollTop, setScrollTop] = useState(0);
+  const filterKey = [query, filter, superclass, sort].join("\n");
+  const lastFilterKey = useRef(filterKey);
 
   const superclasses = useMemo(() => {
     const counts = new Map();
@@ -64,28 +66,77 @@ function TypeIndex({ types, selected, onSelect }) {
     return out;
   }, [types, query, filter, superclass, sort]);
 
+  const position = selected == null ? -1 : items.indexOf(selected);
+  const countText =
+    items.length === types.list.length
+      ? `${integer(items.length)} types`
+      : `${integer(items.length)} of ${integer(types.list.length)} types`;
+  const [announced, setAnnounced] = useState(countText);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAnnounced(countText), 400);
+    return () => clearTimeout(timer);
+  }, [countText]);
+
   useEffect(() => {
     const element = scroller.current;
-    const position = items.indexOf(selected);
-    if (!element || position < 0) return;
-    const y = position * ROW;
-    if (y < element.scrollTop || y > element.scrollTop + element.clientHeight - ROW) {
-      element.scrollTop = Math.max(0, y - element.clientHeight / 2 + ROW / 2);
+    if (!element) return;
+    const filtersChanged = lastFilterKey.current !== filterKey;
+    lastFilterKey.current = filterKey;
+    // A new search starts from its best matches; other filter changes keep the selection in view.
+    if (position < 0 || (filtersChanged && query.trim())) {
+      if (filtersChanged) element.scrollTop = 0;
+      return;
     }
+    const y = position * ROW;
+    const view = element.clientHeight;
+    const top = element.scrollTop;
+    if (!filtersChanged && y >= top && y + ROW <= top + view) return;
+    const near = !filtersChanged && y >= top - view && y + ROW <= top + 2 * view;
+    if (near) element.scrollTop = y < top ? y : y + ROW - view;
+    else element.scrollTop = Math.max(0, y - view / 2 + ROW / 2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selected, filterKey]);
 
   const onKeyDown = (event) => {
-    const step = { ArrowDown: 1, ArrowUp: -1, PageDown: 10, PageUp: -10 }[event.key];
-    if (!step || items.length === 0) return;
+    if (items.length === 0) return;
+    const end = items.length - 1;
+    let next;
+    if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = end;
+    else if (event.key === "Enter") {
+      event.preventDefault();
+      if (position < 0) onSelect(items[0]);
+      else onOpen?.();
+      return;
+    } else {
+      const step = { ArrowDown: 1, ArrowUp: -1, PageDown: 10, PageUp: -10 }[event.key];
+      if (!step) return;
+      next = position < 0 ? 0 : Math.max(0, Math.min(end, position + step));
+    }
     event.preventDefault();
-    const position = items.indexOf(selected);
-    const next = position < 0 ? 0 : Math.max(0, Math.min(items.length - 1, position + step));
-    onSelect(items[next]);
+    if (next !== position) onSelect(items[next]);
   };
 
-  const first = Math.max(0, Math.floor(scrollTop / ROW) - 6);
-  const last = Math.min(items.length, Math.ceil((scrollTop + (height || 800)) / ROW) + 6);
+  const onSearchKeyDown = (event) => {
+    if (event.nativeEvent.isComposing || items.length === 0) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onSelect(items[0]);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      scroller.current?.focus();
+    }
+  };
+
+  // The browser clamps scrollTop before the scroll event reports it, so clamp here too when the list shrinks.
+  const top = Math.min(scrollTop, Math.max(0, items.length * ROW - (height || 0)));
+  const first = Math.max(0, Math.floor(top / ROW) - 6);
+  const last = Math.min(items.length, Math.ceil((top + (height || 800)) / ROW) + 6);
+  const rows = [];
+  for (let k = first; k < last; k += 1) rows.push(k);
+  // The active option stays in the DOM so aria-activedescendant always resolves.
+  if (position >= 0 && (position < first || position >= last)) rows.push(position);
 
   return (
     <section className="atlas-index" aria-labelledby="atlas-title">
@@ -105,6 +156,8 @@ function TypeIndex({ types, selected, onSelect }) {
           placeholder="Search cell types, e.g. pC1"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onSearchKeyDown}
+          aria-controls="atlas-type-list"
         />
         <Segmented
           label="Annotation"
@@ -136,19 +189,28 @@ function TypeIndex({ types, selected, onSelect }) {
             </select>
           </label>
         </div>
-        <p className="atlas-count" aria-live="polite">
-          {items.length === types.list.length
-            ? `${integer(items.length)} types`
-            : `${integer(items.length)} of ${integer(types.list.length)} types`}
-        </p>
+        <div className="atlas-meta">
+          <p className="atlas-count" aria-hidden="true">
+            {countText}
+          </p>
+          <p className="visually-hidden" aria-live="polite">
+            {announced}
+          </p>
+          <p className="atlas-legend" aria-hidden="true">
+            <LabelMark label="male_specific" />
+            <LabelMark label="dimorphic" />
+            <LabelMark label="isomorphic" />
+          </p>
+        </div>
       </div>
       <div
         ref={scroller}
+        id="atlas-type-list"
         className="type-list"
         role="listbox"
         tabIndex={0}
         aria-label="Cell types"
-        aria-activedescendant={selected != null && items.includes(selected) ? `type-option-${selected}` : undefined}
+        aria-activedescendant={position >= 0 ? `type-option-${selected}` : undefined}
         onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
         onKeyDown={onKeyDown}
       >
@@ -156,7 +218,8 @@ function TypeIndex({ types, selected, onSelect }) {
           <p className="type-list-empty">No cell type matches. Clear the search or choose another filter.</p>
         ) : (
           <div style={{ height: items.length * ROW }} className="type-list-inner">
-            {items.slice(first, last).map((i, k) => {
+            {rows.map((k) => {
+              const i = items[k];
               const t = types.list[i];
               return (
                 <div
@@ -164,13 +227,15 @@ function TypeIndex({ types, selected, onSelect }) {
                   id={`type-option-${i}`}
                   role="option"
                   aria-selected={i === selected}
+                  aria-setsize={items.length}
+                  aria-posinset={k + 1}
                   className={i === selected ? "type-row on" : "type-row"}
-                  style={{ transform: `translateY(${(first + k) * ROW}px)` }}
+                  style={{ transform: `translateY(${k * ROW}px)` }}
                   onClick={() => onSelect(i)}
                 >
                   <span className="type-rank">{integer(i + 1)}</span>
                   <span className="type-name">{t.t}</span>
-                  <span className={`dot ${t.l}`} title={LABELS[t.l]} />
+                  <span className={`dot ${t.l}`} role="img" aria-label={LABELS[t.l]} />
                   <span className="type-meter" aria-hidden="true">
                     <span style={{ transform: `scaleX(${t.p})` }} />
                   </span>
@@ -220,7 +285,7 @@ function PartnerColumn({ title, pairs, types }) {
           {pairs.map(([j, synapses]) => (
             <li key={j}>
               <span className="partner-name">
-                <span className={`dot ${types.list[j].l}`} title={LABELS[types.list[j].l]} />
+                <span className={`dot ${types.list[j].l}`} role="img" aria-label={LABELS[types.list[j].l]} />
                 <TypeLink name={types.list[j].t} />
               </span>
               <span>{integer(synapses)}</span>
@@ -248,7 +313,7 @@ function TypeDetail({ index, types, neuropils, candidates, explanations, wiring,
   return (
     <article className="detail" aria-labelledby="detail-title">
       <header className="detail-head">
-        <h2 id="detail-title" className="detail-title">
+        <h2 id="detail-title" className="detail-title" tabIndex={-1}>
           {type.t}
         </h2>
         <p className="detail-meta">
@@ -380,7 +445,7 @@ function NeuropilDetail({ entry, neuropils, types }) {
   return (
     <article className="detail" aria-labelledby="detail-title">
       <header className="detail-head">
-        <h2 id="detail-title" className="detail-title">
+        <h2 id="detail-title" className="detail-title" tabIndex={-1}>
           {entry.name}
         </h2>
         <p className="detail-meta">
@@ -422,7 +487,7 @@ function NeuropilDetail({ entry, neuropils, types }) {
             return (
               <li key={name}>
                 <span className="partner-name">
-                  {t && <span className={`dot ${t.l}`} title={LABELS[t.l]} />}
+                  {t && <span className={`dot ${t.l}`} role="img" aria-label={LABELS[t.l]} />}
                   <TypeLink name={name} />
                 </span>
                 <Meter value={share / maxShare} tone="ink" />
@@ -444,12 +509,14 @@ function Overview({ types, neuropils, candidates, onNeuropil }) {
     .slice(0, 6);
   const landmarks = LANDMARKS.filter(([name]) => types.byName.has(name));
   return (
-    <article className="detail detail-overview">
-      <h2 className="detail-title">How to read the atlas</h2>
+    <article className="detail detail-overview" aria-labelledby="detail-title">
+      <h2 id="detail-title" className="detail-title" tabIndex={-1}>
+        How to read the atlas
+      </h2>
       <p className="detail-lede">
         The brain is stained by two measures at once. Pick a cell type from the list to see why the classifier scored it
-        as it did, and the neuron itself inside the brain. Click a neuropil in the brain to see which types make its
-        synapses.
+        as it did, and the neuron itself inside the brain. Click a neuropil in the brain, or choose one from the menu
+        above it, to see which types make its synapses.
       </p>
 
       <Section title="Brightest neuropils">
@@ -519,12 +586,17 @@ export default function Atlas({ params }) {
   }, [selected]);
 
   useEffect(() => {
-    detailRef.current?.scrollTo({ top: 0 });
+    const panel = detailRef.current;
+    const active = document.activeElement;
+    // Controls inside the panel are replaced by the new selection, which would otherwise drop focus to the body.
+    const refocus = panel && (!active || active === document.body || panel.contains(active));
+    panel?.scrollTo({ top: 0 });
     // Runs after the single-column layout has reordered around the new selection.
     if (revealPending.current) {
       revealPending.current = false;
       stageRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
     }
+    if (refocus) panel.querySelector(".detail-title")?.focus({ preventScroll: true });
   }, [typeParam, neuropilParam]);
 
   if (data.error) {
@@ -542,16 +614,34 @@ export default function Atlas({ params }) {
     revealPending.current = window.matchMedia("(max-width: 960px)").matches;
   };
   const selectType = (i) => {
+    if (types.list[i].t === typeParam && !neuropilParam) return;
     replaceParams("atlas", { type: types.list[i].t });
     revealStage();
   };
   const selectNeuropil = (name) => {
+    if (name === neuropilParam && !typeParam) return;
     replaceParams("atlas", { neuropil: name });
     revealStage();
   };
   const clear = () => replaceParams("atlas", null);
+  const openDetail = () => detailRef.current?.querySelector(".detail-title")?.focus();
+  const changeType = () => {
+    const search = document.getElementById("atlas-search");
+    if (!search) return;
+    search.closest(".atlas-index")?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    search.focus({ preventScroll: true });
+  };
   const type = selected != null ? types.list[selected] : null;
   const skeletonCount = types.list.reduce((n, t) => n + (t.b ? 1 : 0), 0);
+  const cordForced = neuropil?.region === "vnc";
+  const neuropilOption = (n) => {
+    const name = neuropilName(n.name);
+    return (
+      <option key={n.name} value={n.name}>
+        {name ? `${n.name}: ${name}` : n.name}
+      </option>
+    );
+  };
 
   let detail;
   if (type) {
@@ -577,12 +667,12 @@ export default function Atlas({ params }) {
 
   return (
     <div className={`atlas ${type || neuropil ? "atlas-selected" : "atlas-overview"}`}>
-      <TypeIndex types={types} selected={selected} onSelect={selectType} />
+      <TypeIndex types={types} selected={selected} onSelect={selectType} onOpen={openDetail} />
 
       <section className="atlas-stage" aria-label="Stained brain" ref={stageRef}>
         <BrainStain
           mode={channel}
-          showCord={cord}
+          showCord={cord || cordForced}
           highlight={neuropil?.name}
           neuron={type?.b ? { bodyId: type.b, label: type.l } : null}
           onPickRegion={(entry) => selectNeuropil(entry.name)}
@@ -600,10 +690,27 @@ export default function Atlas({ params }) {
               { value: "merge", label: "Merge", swatch: "merge" },
             ]}
           />
-          <label className="field-check">
-            <input type="checkbox" checked={cord} onChange={(e) => setCord(e.target.checked)} />
+          <label className="field-check" title={cordForced ? "Shown while a nerve cord neuropil is selected" : undefined}>
+            <input
+              type="checkbox"
+              checked={cord || cordForced}
+              disabled={cordForced}
+              onChange={(e) => setCord(e.target.checked)}
+            />
             Show nerve cord
           </label>
+          <select
+            className="atlas-np-select"
+            aria-label="Inspect a neuropil"
+            value={neuropil?.name ?? ""}
+            onChange={(e) => e.target.value && selectNeuropil(e.target.value)}
+          >
+            <option value="" disabled>
+              Inspect a neuropil
+            </option>
+            <optgroup label="Brain">{neuropils.filter((n) => n.region === "brain").map(neuropilOption)}</optgroup>
+            <optgroup label="Ventral nerve cord">{neuropils.filter((n) => n.region !== "brain").map(neuropilOption)}</optgroup>
+          </select>
         </div>
         <div className="stage-foot">
           <p>{CHANNEL_TEXT[channel]}</p>
@@ -611,11 +718,16 @@ export default function Atlas({ params }) {
         </div>
       </section>
 
-      <aside className="atlas-detail" ref={detailRef} aria-live="polite">
+      <aside className="atlas-detail" ref={detailRef} aria-label="Details">
         {(type || neuropil || typeParam || neuropilParam) && (
-          <button type="button" className="button button-quiet detail-close" onClick={clear}>
-            Back to overview
-          </button>
+          <div className="detail-actions">
+            <button type="button" className="button button-quiet detail-close" onClick={clear}>
+              Back to overview
+            </button>
+            <button type="button" className="button button-quiet detail-change" onClick={changeType}>
+              Change cell type
+            </button>
+          </div>
         )}
         {loadError && <ErrorNote>{loadError}</ErrorNote>}
         {detail}

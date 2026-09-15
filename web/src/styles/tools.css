@@ -105,9 +105,25 @@
   gap: 0.5rem;
 }
 
+.atlas-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+}
+
 .atlas-count {
   font-size: var(--step--2);
   color: var(--ink-3);
+}
+
+.atlas-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.7rem;
+  font-size: var(--step--2);
+  color: var(--ink-2);
 }
 
 .type-list {
@@ -218,6 +234,42 @@
   inset: 0;
 }
 
+/* Leaves room for the viewer's rotate button in the bottom-right corner. */
+.atlas-stage .stage-foot {
+  right: 10rem;
+}
+
+.atlas-stage .field-check:has(input:disabled) {
+  color: var(--field-ink-3);
+  cursor: default;
+}
+
+.atlas-np-select {
+  field-sizing: content;
+  width: auto;
+  max-width: 14rem;
+  min-height: 0;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  border-radius: var(--radius);
+  background-color: rgb(11 13 16 / 0.85);
+  box-shadow: 0 0 0 1px var(--field-rule);
+  color: var(--field-ink-2);
+  color-scheme: dark;
+  font-size: var(--step--1);
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.atlas-np-select:hover {
+  color: var(--field-ink);
+  box-shadow: 0 0 0 1px var(--field-ink-3);
+}
+
+.atlas-np-select:focus-visible {
+  outline-color: var(--field-ink);
+}
+
 .atlas-detail,
 .circuits-detail {
   min-height: 0;
@@ -227,10 +279,31 @@
   background: var(--paper-raised);
 }
 
-.detail-close {
-  min-height: 2rem;
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin-bottom: 1.25rem;
+}
+
+.detail-close,
+.detail-change {
+  min-height: 2rem;
   padding: 0.3rem 0.75rem;
+}
+
+.detail-change {
+  display: none;
+}
+
+.detail-title:focus-visible {
+  outline-offset: 4px;
+  border-radius: 2px;
+}
+
+.detail-title[tabindex] {
+  width: fit-content;
+  max-width: 100%;
 }
 
 .detail {
@@ -578,6 +651,30 @@
 
   .atlas-stage {
     scroll-margin-top: var(--nav-height);
+  }
+
+  .atlas-selected .detail-change {
+    display: inline-flex;
+  }
+}
+
+/* The caption moves above the rotate button once there is no room beside it. */
+@media (max-width: 640px) {
+  .atlas-stage .stage-foot {
+    right: 1rem;
+    bottom: 4rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .atlas-detail .type-link {
+    display: inline-block;
+    padding-block: 0.8rem;
+  }
+
+  .detail-close,
+  .detail-change {
+    min-height: 44px;
   }
 }
 
