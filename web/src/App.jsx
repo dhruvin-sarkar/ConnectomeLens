@@ -55,12 +55,19 @@ const PAGES = {
 const TOOLS = new Set(["atlas", "circuits"]);
 
 function Nav({ page }) {
+  const nav = useRef(null);
+
+  // On narrow screens the links scroll sideways, so keep the current one in view.
+  useEffect(() => {
+    nav.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [page]);
+
   return (
     <header className="nav">
       <a className="wordmark" href={href("findings")} aria-label="Wired Different, findings">
         Wired Different
       </a>
-      <nav aria-label="Sections">
+      <nav aria-label="Sections" ref={nav}>
         <ul>
           {Object.entries(PAGES).map(([id, { label }]) => (
             <li key={id}>

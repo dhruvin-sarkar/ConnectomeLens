@@ -7,13 +7,15 @@
   --rule-strong: #aab3bb;
   --ink: #0e1216;
   --ink-2: #454f59;
-  --ink-3: #6f7984;
+  --ink-3: #5c6670;
+  /* Boundary of text inputs and selects: at least 3:1 against paper and wash. */
+  --control-border: #7d8791;
   --field: #000;
   --field-raised: #0b0d10;
   --field-rule: #262b31;
   --field-ink: #e8edf1;
   --field-ink-2: #98a2ac;
-  --field-ink-3: #66707a;
+  --field-ink-3: #7c8690;
 
   /* Channels. Magenta is always the classifier; green and cyan are always Janelia's annotation. */
   --magenta: #b8166f;

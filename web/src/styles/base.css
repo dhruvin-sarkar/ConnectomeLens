@@ -139,6 +139,11 @@ a {
   outline-color: var(--field-ink);
 }
 
+/* The link row scrolls, which would clip an outside outline. */
+.nav li a:focus-visible {
+  outline-offset: -2px;
+}
+
 /* Prose */
 .prose {
   font-family: var(--serif);
@@ -207,6 +212,7 @@ a {
   white-space: nowrap;
 }
 
+/* Annotation marks differ in shape as well as colour: filled circle, square, hollow ring. */
 .dot {
   display: inline-block;
   width: 0.62em;
@@ -223,12 +229,17 @@ a {
 
 .label-dimorphic .dot,
 .dot.dimorphic {
+  width: 0.56em;
+  height: 0.56em;
+  margin: 0.03em;
+  border-radius: 1px;
   background: var(--cyan);
 }
 
 .label-isomorphic .dot,
 .dot.isomorphic {
-  background: var(--neutral);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--neutral);
 }
 
 /* Controls */
@@ -305,6 +316,7 @@ a {
 }
 
 .segmented button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -327,6 +339,18 @@ a {
   color: var(--ink);
   font-weight: 600;
   box-shadow: 0 0 0 1px var(--rule);
+}
+
+/* The fill alone is too close to the track, so the chosen option also carries a bar. */
+.segmented button.on::after {
+  content: "";
+  position: absolute;
+  right: 0.45rem;
+  bottom: 1px;
+  left: 0.45rem;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
 }
 
 .segmented-field {
@@ -388,6 +412,12 @@ a {
   accent-color: var(--ink);
 }
 
+@media (pointer: coarse) {
+  .slider input {
+    min-height: 44px;
+  }
+}
+
 .slider output {
   min-width: 4.5ch;
   text-align: right;
@@ -399,7 +429,7 @@ select {
   width: 100%;
   min-height: 2.5rem;
   padding: 0.45rem 0.7rem;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius);
   background: var(--paper-raised);
   color: var(--ink);
@@ -503,6 +533,16 @@ input[type="search"]::placeholder {
   touch-action: none;
 }
 
+.viewer-rotate {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.7rem;
+  font-size: var(--step--2);
+  font-weight: 500;
+}
+
 .viewer-status {
   position: absolute;
   inset: 0;
@@ -530,6 +570,44 @@ input[type="search"]::placeholder {
 
   .nav .nav-external {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav {
+    gap: 0.6rem;
+  }
+
+  .wordmark {
+    font-size: 1rem;
+  }
+
+  /* Links that do not fit scroll sideways; the fade shows there are more. */
+  .nav nav {
+    margin-right: calc(-1 * var(--gutter));
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+  }
+
+  .nav ul {
+    gap: 0;
+    padding-right: 2rem;
+  }
+
+  .nav li a {
+    padding-inline: 0.45rem;
+  }
+}
+
+@media (pointer: coarse) {
+  .segmented button {
+    min-height: 2.5rem;
+  }
+
+  .viewer-rotate {
+    right: 1rem;
+    bottom: 1rem;
+    min-height: 2.5rem;
   }
 }
 

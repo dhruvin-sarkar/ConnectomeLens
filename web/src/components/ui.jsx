@@ -7,11 +7,13 @@ export const REPORT_PDF = `${REPO}/blob/main/paper/report.pdf`;
 
 /** A numbered figure: title, optional controls, the graphic, and a caption that explains how to read it. */
 export function Figure({ id, number, title, controls, caption, children, variant = "", className = "" }) {
+  const fallback = useId();
+  const titleId = id ? `${id}-title` : `figure-${number ?? fallback}-title`;
   return (
-    <figure id={id} className={`figure ${variant ? `figure-${variant}` : ""} ${className}`}>
+    <figure id={id} className={`figure ${variant ? `figure-${variant}` : ""} ${className}`} aria-labelledby={titleId}>
       <div className="figure-head">
-        <h3 className="figure-title">
-          {number != null && <span className="figure-number">Figure {number}</span>}
+        <h3 id={titleId} className="figure-title">
+          {number != null && <span className="figure-number">Figure {number} </span>}
           {title}
         </h3>
         {controls && <div className="figure-controls">{controls}</div>}
@@ -94,13 +96,23 @@ export function ErrorNote({ children }) {
   );
 }
 
-/** Inline range slider with a visible label. */
-export function Slider({ label, min, max, step = 1, value, onChange, format = (v) => v, tone = "paper" }) {
+/** Inline range slider with a visible label. ``valueText`` (a string, or a function of the value) is announced in place of the raw number. */
+export function Slider({ label, min, max, step = 1, value, onChange, format = (v) => v, valueText, tone = "paper" }) {
   const id = useId();
+  const text = typeof valueText === "function" ? valueText(value) : valueText;
   return (
     <div className={`slider slider-${tone}`}>
       <label htmlFor={id}>{label}</label>
-      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-valuetext={text}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
       <output htmlFor={id}>{format(value)}</output>
     </div>
   );
