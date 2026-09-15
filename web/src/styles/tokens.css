@@ -1,0 +1,49 @@
+:root {
+  /* Paper: the reading surface. Field: the black microscope field used for anatomy and maps. */
+  --paper: #f3f5f6;
+  --paper-raised: #fbfcfc;
+  --wash: #e6eaed;
+  --rule: #d3d9de;
+  --rule-strong: #aab3bb;
+  --ink: #0e1216;
+  --ink-2: #454f59;
+  --ink-3: #6f7984;
+  --field: #000;
+  --field-raised: #0b0d10;
+  --field-rule: #262b31;
+  --field-ink: #e8edf1;
+  --field-ink-2: #98a2ac;
+  --field-ink-3: #66707a;
+
+  /* Channels. Magenta is always the classifier; green and cyan are always Janelia's annotation. */
+  --magenta: #b8166f;
+  --magenta-soft: #f5d3e6;
+  --magenta-glow: #ff4fc3;
+  --green: #0a8448;
+  --green-soft: #cdeedb;
+  --green-glow: #45f090;
+  --cyan: #0a7690;
+  --cyan-soft: #cbe9f0;
+  --cyan-glow: #52d8f2;
+  --neutral: #8a939c;
+  --neutral-glow: #6c7680;
+  --alert: #b3261e;
+
+  --serif: "Newsreader Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: "Atkinson Hyperlegible Next Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --step--2: 0.75rem;
+  --step--1: 0.875rem;
+  --step-0: 1rem;
+  --step-1: 1.1875rem;
+  --step-2: 1.5rem;
+  --step-3: 2.125rem;
+  --step-4: clamp(2.25rem, 1.6rem + 2.4vw, 3.25rem);
+  --step-hero: clamp(3.5rem, 1.5rem + 8vw, 8.75rem);
+
+  --measure: 40rem;
+  --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+  --nav-height: 3.5rem;
+  --radius: 6px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}

@@ -1,108 +1,159 @@
-import { useEffect, useState } from "react";
-import Atlas from "./Atlas.jsx";
-import Game from "./Game.jsx";
-import Pathfinder from "./Pathfinder.jsx";
-import { loadJSON } from "./data.js";
+import { Suspense, lazy, useEffect } from "react";
+import { REPO, REPORT_PDF } from "./components/ui.jsx";
+import {
+  loadCandidates,
+  loadDiagnostics,
+  loadGame,
+  loadMap,
+  loadNeuropils,
+  loadRoutes,
+  loadSummary,
+  loadTypes,
+} from "./lib/data.js";
+import { href, useRoute } from "./lib/route.js";
 
-const REPO = "https://github.com/dhruvin-sarkar/ConnectomeLens";
-const MODES = [
-  { id: "atlas", label: "Dimorphism Atlas", component: Atlas },
-  { id: "pathfinder", label: "Circuit Pathfinder", component: Pathfinder },
-  { id: "game", label: "Guess the Neuron", component: Game },
-];
+const Findings = lazy(() => import("./pages/Findings.jsx"));
+const Atlas = lazy(() => import("./pages/Atlas.jsx"));
+const Circuits = lazy(() => import("./pages/Circuits.jsx"));
+const Game = lazy(() => import("./pages/Game.jsx"));
+const Methods = lazy(() => import("./pages/Methods.jsx"));
 
-function useHashMode() {
-  const read = () => MODES.find((m) => `#${m.id}` === window.location.hash)?.id ?? "atlas";
-  const [mode, setMode] = useState(read);
-  useEffect(() => {
-    const update = () => setMode(read());
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
-  return mode;
-}
+// ``data`` lists the loaders each page needs before its first render, started alongside the page's code.
+const PAGES = {
+  findings: {
+    component: Findings,
+    label: "Findings",
+    title: "Wired Different",
+    data: [loadSummary, loadDiagnostics, loadTypes, loadMap, loadRoutes, loadCandidates],
+  },
+  atlas: {
+    component: Atlas,
+    label: "Atlas",
+    title: "Atlas | Wired Different",
+    data: [loadTypes, loadCandidates, loadNeuropils],
+  },
+  circuits: {
+    component: Circuits,
+    label: "Circuits",
+    title: "Circuits | Wired Different",
+    data: [loadRoutes, loadTypes],
+  },
+  game: {
+    component: Game,
+    label: "Guess the Neuron",
+    title: "Guess the Neuron | Wired Different",
+    data: [loadGame, loadTypes],
+  },
+  methods: {
+    component: Methods,
+    label: "Methods",
+    title: "Methods | Wired Different",
+    data: [loadSummary, loadDiagnostics, loadRoutes, loadCandidates],
+  },
+};
 
-function Headline({ summary }) {
-  if (!summary) return <div className="headline headline-loading" />;
-  const { classifier, nullModel } = summary;
+const TOOLS = new Set(["atlas", "circuits"]);
+
+function Nav({ page }) {
   return (
-    <dl className="headline">
-      <div>
-        <dt>cross-validated AUC-PR</dt>
-        <dd>
-          {classifier.auc_pr.toFixed(3)}
-          <span>vs {classifier.baseline_auc_pr.toFixed(3)} by chance</span>
-        </dd>
-      </div>
-      <div>
-        <dt>vs {nullModel.n_trials} degree-preserving random graphs</dt>
-        <dd>
-          p = {nullModel.full.p_value.toFixed(3)}
-          <span>no random graph matched the real wiring</span>
-        </dd>
-      </div>
-      <div>
-        <dt>graph topology features alone</dt>
-        <dd>
-          {nullModel.topology_only.real.toFixed(3)}
-          <span>vs {nullModel.topology_only.null_mean.toFixed(3)} on random graphs</span>
-        </dd>
-      </div>
-    </dl>
+    <header className="nav">
+      <a className="wordmark" href={href("findings")} aria-label="Wired Different, findings">
+        Wired Different
+      </a>
+      <nav aria-label="Sections">
+        <ul>
+          {Object.entries(PAGES).map(([id, { label }]) => (
+            <li key={id}>
+              <a href={href(id)} aria-current={id === page ? "page" : undefined}>
+                {label}
+              </a>
+            </li>
+          ))}
+          <li className="nav-external">
+            <a href={REPO}>Code</a>
+          </li>
+        </ul>
+      </nav>
+    </header>
   );
 }
 
-export default function App() {
-  const mode = useHashMode();
-  const [summary, setSummary] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    loadJSON("summary.json").then(setSummary, (e) => setError(e.message));
-  }, []);
-
-  const Mode = MODES.find((m) => m.id === mode).component;
-
+function Footer() {
   return (
-    <div className="app">
-      <header className="masthead">
-        <div className="brand">
-          <h1>Wired Different</h1>
+    <footer className="site-footer">
+      <div className="footer-grid">
+        <div>
+          <p className="footer-title">Wired Different</p>
           <p>
-            Does the wiring of the male fruit fly's nervous system carry a signature of which cell types differ between
-            the sexes? A classifier that sees only the male connectome, tested against randomized wiring.
+            A wiring-only classifier for cell types annotated dimorphic or male-specific in the male <i>Drosophila</i>{" "}
+            connectome, tested
+            against 500 degree-preserving randomized graphs.
           </p>
         </div>
-        <Headline summary={summary} />
-      </header>
+        <div>
+          <p className="footer-heading">Data</p>
+          <p>
+            Male adult <i>Drosophila</i> central nervous system connectome (male-cns v1.0) from HHMI Janelia FlyEM and
+            Google Research, released under CC-BY 4.0 and accessed through neuPrint. Berg et al., <i>Cell</i> 2026,{" "}
+            <a href="https://doi.org/10.1016/j.cell.2026.08.015">doi:10.1016/j.cell.2026.08.015</a>.
+          </p>
+        </div>
+        <div>
+          <p className="footer-heading">This project</p>
+          <ul>
+            <li>
+              <a href={REPORT_PDF}>Technical report (PDF)</a>
+            </li>
+            <li>
+              <a href={REPO}>Source code and reproduction</a>
+            </li>
+            <li>
+              <a href={href("methods")}>Methods and full results</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <p className="footer-note">
+        Probabilities are out-of-fold: every cell type was scored by a model that never saw its label. Results are
+        correlational and structural. Candidates are not evidence of new dimorphism, and nothing here has been peer
+        reviewed. Code released under the MIT License.
+      </p>
+    </footer>
+  );
+}
 
-      <nav className="tabs" aria-label="Modes">
-        {MODES.map((m) => (
-          <a
-            key={m.id}
-            href={`#${m.id}`}
-            className={m.id === mode ? "active" : ""}
-            aria-current={m.id === mode ? "page" : undefined}
-          >
-            {m.label}
-          </a>
-        ))}
-      </nav>
+/** Moves focus to the main landmark without touching the hash, which the router reads as a page. */
+function skipToMain(event) {
+  event.preventDefault();
+  const main = document.getElementById("main");
+  main?.focus();
+  main?.scrollIntoView({ block: "start" });
+}
 
-      {error && <p className="error">{error}</p>}
-      <main>{summary && <Mode key={mode} summary={summary} />}</main>
+export default function App() {
+  const { page, params } = useRoute();
+  const { component: Page, title, data } = PAGES[page];
 
-      <footer className="footer">
-        <p>
-          Data: adult male <i>Drosophila</i> central nervous system connectome (male-cns v1.0) from HHMI Janelia FlyEM
-          and Google Research, Berg et al., <i>Cell</i> 2026, CC-BY 4.0, accessed through neuPrint. Probabilities are
-          out-of-fold: every cell type was scored by a model that never saw its label. Results are correlational and
-          structural; they are not evidence of new dimorphism and say nothing directly about behavior.
-        </p>
-        <p>
-          <a href={REPO}>Code, technical report and reproduction instructions</a>
-        </p>
-      </footer>
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+
+  useEffect(() => {
+    for (const load of data) load();
+  }, [data]);
+
+  return (
+    <div className={`app app-${page}`}>
+      <a className="skip-link" href="#main" onClick={skipToMain}>
+        Skip to content
+      </a>
+      <Nav page={page} />
+      <main id="main" tabIndex={-1} style={{ outline: "none" }} className={TOOLS.has(page) ? "main-tool" : "main-page"}>
+        <Suspense fallback={<p className="loading loading-page">Loading</p>}>
+          <Page params={params} />
+        </Suspense>
+      </main>
+      {!TOOLS.has(page) && <Footer />}
     </div>
   );
 }

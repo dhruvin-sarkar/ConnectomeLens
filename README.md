@@ -58,7 +58,7 @@ The male CNS connectome (`male-cns:v1.0`, Berg et al., *Cell* 2026) labels each 
 
 - **Giant Fiber check:** the route with the largest product of output shares from the looming detector LPLC2 to the jump motor neuron TTMn runs through DNp01, the Giant Fiber.
 - **Node removal:** deleting DNp01 reroutes the LPLC2 → TTMn route through four hops instead of two. The product of output shares falls from 9.45 × 10⁻⁴ to 4.92 × 10⁻⁶.
-- **Candidates:** two isomorphic-labeled types, CL062_b3 and CL062_b2, score in the top 1%. Both carry a *fru* annotation, which was not a model input. They are candidates for further investigation, not evidence of dimorphism.
+- **Candidates:** two types annotated isomorphic, CL062_b3 and CL062_b2, score in the top 1%. Both carry a *fru* annotation, which was not a model input. They are candidates for further investigation, not evidence of dimorphism.
 
 **One pre-specified check fails.** It requires at least one of four named sex-related types to rank in the top 20: AOTU008 (the example shown in Google Research's announcement), AOTU012, DNg13 or LoVP92. They rank 531, 591, 572 and 574. The check is left unchanged and discussed in the technical report.
 

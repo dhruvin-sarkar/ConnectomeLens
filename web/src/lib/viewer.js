@@ -4,43 +4,48 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 
-const BACKGROUND = 0x07070b;
-
 // Camera directions in scene space (x: fly's left, y: dorsal, z: anterior).
 export const VIEWS = {
-  front: new THREE.Vector3(0, 0.38, 1),
+  front: new THREE.Vector3(0, 0.3, 1),
   oblique: new THREE.Vector3(0.95, 0.45, 0.75),
   side: new THREE.Vector3(1, 0.3, 0.12),
+  top: new THREE.Vector3(0.0001, 1, 0.12),
 };
 
 /**
- * One WebGL canvas showing neuropil meshes and neuron skeletons.
+ * One WebGL canvas showing neuropil meshes and neuron skeletons on a black field.
  *
  * Data coordinates are µm with x towards the fly's left, y ventral and z posterior; the anatomy group
  * rotates them 180° about x so that dorsal is up and the default camera faces the front of the head.
  */
 export class Viewer {
-  constructor(container, { onHover, onPick } = {}) {
+  constructor(container, { onHover, onPick, autoRotate = false } = {}) {
     this.container = container;
     this.onHover = onHover;
     this.onPick = onPick;
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setClearColor(BACKGROUND);
+    this.renderer.setClearColor(0x000000);
+    this.renderer.domElement.setAttribute("aria-hidden", "true");
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(30, 1, 1, 20000);
     this.scene.add(this.camera);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x303040, 1.4));
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x20242a, 1.5));
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(-0.4, 0.6, 1);
     this.camera.add(key);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
+    this.controls.autoRotate = autoRotate;
+    this.controls.autoRotateSpeed = 0.35;
+    this.controls.addEventListener("start", () => {
+      this.controls.autoRotate = false;
+    });
 
     this.anatomy = new THREE.Group();
     this.anatomy.rotation.x = Math.PI;
@@ -55,12 +60,16 @@ export class Viewer {
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
     this.hovered = null;
+    this.active = true;
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
     this.bindPointer();
+    this.start();
+  }
 
+  start() {
     const loop = (time) => {
       this.frame = requestAnimationFrame(loop);
       this.controls.update();
@@ -68,6 +77,14 @@ export class Viewer {
       this.renderer.render(this.scene, this.camera);
     };
     this.frame = requestAnimationFrame(loop);
+  }
+
+  /** Pause rendering while the canvas is off screen. */
+  setActive(active) {
+    if (active === this.active) return;
+    this.active = active;
+    cancelAnimationFrame(this.frame);
+    if (active) this.start();
   }
 
   resize() {
@@ -129,7 +146,7 @@ export class Viewer {
       this.neuropilGroup.remove(mesh);
     }
     this.neuropilMeshes = neuropils.map((entry) => {
-      const material = new THREE.MeshLambertMaterial({ color: 0x888888, side: THREE.DoubleSide });
+      const material = new THREE.MeshLambertMaterial({ color: 0x222222, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(entry.geometry, material);
       mesh.userData = { entry, pickable: true };
       this.neuropilGroup.add(mesh);
@@ -137,18 +154,28 @@ export class Viewer {
     });
   }
 
-  /** ``style(entry)`` returns ``{ color: [r, g, b], opacity, visible, pickable }`` for each neuropil. */
+  /**
+   * ``style(entry)`` returns ``{ color: [r, g, b] in sRGB 0–1, opacity, visible, pickable, emissive, additive }`` for
+   * each neuropil; ``additive`` sums overlapping surfaces like a maximum-intensity projection.
+   */
   styleNeuropils(style) {
     for (const mesh of this.neuropilMeshes) {
-      const { color = [0.5, 0.5, 0.5], opacity = 1, visible = true, pickable = true } = style(mesh.userData.entry);
+      const { color = [0.3, 0.3, 0.3], opacity = 1, visible = true, pickable = true, emissive = 0, additive = false } =
+        style(mesh.userData.entry);
+      const { material } = mesh;
       mesh.visible = visible;
       mesh.userData.pickable = pickable;
-      mesh.material.color.setRGB(...color);
-      mesh.material.opacity = opacity;
-      mesh.material.transparent = opacity < 1;
-      mesh.material.depthWrite = opacity >= 1;
-      mesh.renderOrder = opacity < 1 ? 1 : 0;
-      mesh.material.needsUpdate = true;
+      material.color.setRGB(color[0], color[1], color[2], THREE.SRGBColorSpace);
+      material.emissive.setRGB(color[0] * emissive, color[1] * emissive, color[2] * emissive, THREE.SRGBColorSpace);
+      const transparent = additive || opacity < 1;
+      const blending = additive ? THREE.AdditiveBlending : THREE.NormalBlending;
+      if (material.transparent !== transparent || material.blending !== blending) material.needsUpdate = true;
+      material.opacity = opacity;
+      material.transparent = transparent;
+      material.blending = blending;
+      material.side = additive ? THREE.FrontSide : THREE.DoubleSide;
+      material.depthWrite = !transparent;
+      mesh.renderOrder = transparent ? 1 : 0;
     }
   }
 
@@ -165,7 +192,7 @@ export class Viewer {
       }
       const geometry = new LineSegmentsGeometry().setPositions(segments);
       const material = new LineMaterial({
-        color: new THREE.Color(...color),
+        color: new THREE.Color().setRGB(color[0], color[1], color[2], THREE.SRGBColorSpace),
         linewidth: width,
         transparent: opacity < 1,
         opacity,
@@ -186,6 +213,11 @@ export class Viewer {
       this.skeletonGroup.remove(line);
     }
     this.skeletons = [];
+  }
+
+  /** Tilt the anatomy about the left–right axis by ``angle`` radians; a positive angle swings the nerve cord below the brain. */
+  setTilt(angle) {
+    this.anatomy.rotation.x = Math.PI - angle;
   }
 
   /** Point the camera from ``direction`` at the bounding box of ``objects`` (all visible content by default). */

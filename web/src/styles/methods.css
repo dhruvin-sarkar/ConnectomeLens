@@ -1,0 +1,357 @@
+.methods-page {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: clamp(3rem, 2rem + 3vw, 5rem) var(--gutter) 0;
+}
+
+.methods-head {
+  max-width: 52rem;
+  margin-bottom: 3rem;
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.methods-title {
+  font-family: var(--serif);
+  font-size: clamp(2.5rem, 1.8rem + 3vw, 4.25rem);
+  font-weight: 400;
+  font-variation-settings: "opsz" 72;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.methods-deck {
+  max-width: 40rem;
+  margin-top: 1rem;
+  font-family: var(--serif);
+  font-size: var(--step-2);
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+
+.methods-byline {
+  margin-top: 1rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.methods-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.methods-layout {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 5rem);
+}
+
+.methods-toc {
+  position: sticky;
+  top: calc(var(--nav-height) + 1.5rem);
+  max-height: calc(100svh - var(--nav-height) - 3rem);
+  overflow-y: auto;
+}
+
+.methods-toc-title {
+  margin-bottom: 0.5rem;
+  font-size: var(--step--1);
+  font-weight: 700;
+}
+
+.methods-toc ol {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.methods-toc button {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  width: 100%;
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  text-align: left;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.methods-toc button:hover {
+  color: var(--ink);
+}
+
+.methods-toc button.on {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.toc-number {
+  padding-right: 0.6rem;
+  text-align: right;
+  color: var(--ink-3);
+}
+
+.methods-toc button.on .toc-number {
+  color: var(--magenta);
+}
+
+.methods-body {
+  max-width: 54rem;
+}
+
+.methods-section {
+  padding-bottom: 3.5rem;
+}
+
+.methods-section > p,
+.methods-section > ul {
+  max-width: var(--measure);
+}
+
+.methods-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  font-family: var(--serif);
+  font-size: var(--step-3);
+  font-weight: 450;
+  font-variation-settings: "opsz" 48;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.methods-heading-number {
+  min-width: 1.5rem;
+  font-family: var(--sans);
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.methods-body ul {
+  padding-left: 1.2rem;
+}
+
+.methods-body li + li {
+  margin-top: 0.5rem;
+}
+
+.methods-body code,
+.data-table code {
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+  background: var(--wash);
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.82em;
+}
+
+.key-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
+  max-width: var(--measure);
+  margin: 2rem 0 0;
+  font-family: var(--sans);
+}
+
+.key-numbers > div {
+  padding-top: 0.6rem;
+  border-top: 2px solid var(--ink);
+}
+
+.key-numbers dt {
+  font-size: var(--step--2);
+  color: var(--ink-2);
+}
+
+.key-numbers dd {
+  margin: 0.3rem 0 0;
+  font-family: var(--serif);
+  font-size: var(--step-3);
+  line-height: 1;
+}
+
+/* Tables */
+.table-wrap {
+  margin: 2rem 0;
+  overflow-x: auto;
+  font-family: var(--sans);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  font-variant-numeric: lining-nums tabular-nums;
+  line-height: 1.4;
+}
+
+.data-table caption {
+  padding-bottom: 0.75rem;
+  caption-side: top;
+  text-align: left;
+  font-size: var(--step--1);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.table-number {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.data-table thead th {
+  padding: 0.5rem 0.9rem 0.5rem 0;
+  border-bottom: 1px solid var(--ink);
+  text-align: left;
+  vertical-align: bottom;
+  font-size: var(--step--2);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+
+.data-table tbody th,
+.data-table td {
+  padding: 0.5rem 0.9rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table tbody th {
+  font-weight: 600;
+}
+
+.data-table .num-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background: rgb(230 234 237 / 0.55);
+}
+
+.cell-sub {
+  display: block;
+  font-size: var(--step--2);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 2rem;
+}
+
+.table-scroll {
+  max-height: 34rem;
+  margin-top: 1rem;
+  overflow: auto;
+  border-bottom: 1px solid var(--rule);
+}
+
+.table-scroll .table-wrap {
+  margin: 0;
+  overflow: visible;
+}
+
+.table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--paper);
+}
+
+.make-targets {
+  display: grid;
+  gap: 0.6rem;
+  max-width: var(--measure);
+  margin: 1.25rem 0 0;
+  font-family: var(--sans);
+  font-size: var(--step--1);
+}
+
+.make-targets > div {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.make-targets dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.references {
+  max-width: var(--measure);
+  padding-left: 1.5rem;
+  font-size: var(--step-0);
+  line-height: 1.5;
+}
+
+.references li + li {
+  margin-top: 0.75rem;
+}
+
+.references a {
+  overflow-wrap: anywhere;
+}
+
+.citation-block {
+  max-width: var(--measure);
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--field-ink);
+  font-size: var(--step--1);
+  line-height: 1.6;
+}
+
+.methods-body .citation-block code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  color: inherit;
+}
+
+@media (max-width: 900px) {
+  .methods-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .methods-toc {
+    position: static;
+    max-height: none;
+    padding: 1rem;
+    border-radius: var(--radius);
+    background: var(--wash);
+  }
+
+  .methods-toc ol {
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  }
+
+  .key-numbers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .make-targets > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.2rem;
+  }
+}
