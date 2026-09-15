@@ -11,7 +11,7 @@ margin:
 
 # Abstract
 
-HHMI Janelia and Google Research recently published the first complete wiring diagram of an adult male fruit fly's central nervous system, about 166,700 neurons and 125 million synapses. They found that 498 of the 8,567 cell types matched between the male and female brains (about 6%) are dimorphic or sex-specific, concentrated in higher brain centers. We asked whether that difference leaves a detectable signature in the male wiring itself, using no features taken from the female brain. A gradient-boosted classifier trained only on male-connectome features predicts the published dimorphism labels of 11,751 cell types with a cross-validated AUC-PR of 0.759, against 0.041 expected by chance. That is significantly above a degree-preserving randomized null model: none of 500 randomized graphs reached the real score (p = 0.002). Graph topology features alone reach 0.489, against 0.070 on randomized graphs (p = 0.002). We use the classifier to flag isomorphic-labeled cell types whose wiring resembles sex-related types as candidates for further investigation. Separately, as an independent validation of the underlying graph, we reconstruct the well-established Giant Fiber escape circuit from graph structure alone.
+HHMI Janelia and Google Research recently published the first complete wiring diagram of an adult male fruit fly's central nervous system, about 166,700 neurons and 125 million synapses. They found that 498 of the 8,567 cell types matched between the male and female brains (about 6%) are dimorphic or sex-specific, concentrated in higher brain centers. We asked whether that difference leaves a detectable signature in the male wiring itself, using no features taken from the female brain. A gradient-boosted classifier trained only on male-connectome features predicts which of 11,751 cell types Janelia annotates as dimorphic or male-specific, with a cross-validated AUC-PR of 0.759, against 0.041 expected by chance. That is significantly above a degree-preserving randomized null model: none of 500 randomized graphs reached the real score (p = 0.002). Graph topology features alone reach 0.489, against 0.070 on randomized graphs (p = 0.002). We use the classifier to flag isomorphic-labeled cell types whose wiring resembles sex-related types as candidates for further investigation. Separately, as a check on the graph construction, we reconstruct the well-established Giant Fiber escape circuit from graph structure alone.
 
 # Introduction
 
@@ -21,7 +21,7 @@ Those labels come from comparing two connectomes. This project asks a narrower q
 
 A classifier that scores well does not settle the question. Cell types differ enormously in size and connectivity, and a model can separate classes using only the degree sequence, meaning how many partners each type has regardless of who they are. The central test here is therefore a comparison against randomized graphs that keep every type's in-degree and out-degree but scramble who connects to whom, and the results lead with it.
 
-Two further analyses reuse the same graph. A weighted shortest-path search recovers the Giant Fiber escape pathway, a textbook circuit (von Reyn et al. 2014; Ache et al. 2019). This validates graph construction independently of the dimorphism labels. A node-removal analysis then asks which alternative routes the graph contains once the Giant Fiber is deleted. All results are correlational and structural.
+Two further analyses reuse the same graph. A weighted shortest-path search recovers the Giant Fiber escape pathway, a textbook circuit (von Reyn et al. 2014; Ache et al. 2019). This checks the graph construction independently of the dimorphism labels. A node-removal analysis then asks which alternative routes the graph contains once the Giant Fiber is deleted. All results are correlational and structural.
 
 # Data and Methods
 
@@ -39,7 +39,7 @@ The `fruDsx` property, which records *fruitless* and *doublesex* expression, was
 
 ## Cell-type graph
 
-Neuron-to-neuron synapse counts between typed neurons were fetched with `fetch_adjacencies` and summed into directed type-to-type edges: 3.82 million type pairs carrying 122.3 million synapses. An edge was kept if it supplies at least 1% of the target type's input synapses, and self-loops were removed. This threshold was chosen from graph statistics before any model was trained, because the unthresholded graph is too dense for meaningful hop distances. The final graph has 11,751 vertices and 243,439 edges carrying 81.3 million synapses.
+Neuron-to-neuron synapse counts between typed neurons were fetched with `fetch_adjacencies` and summed into directed type-to-type edges: 3.83 million type pairs carrying 122.3 million synapses. An edge was kept if it supplies at least 1% of the target type's input synapses, and self-loops were removed. This threshold was chosen from graph statistics before any model was trained, because the unthresholded graph is too dense for meaningful hop distances. The final graph has 11,751 vertices and 243,439 edges carrying 81.3 million synapses.
 
 ## Features
 
@@ -70,7 +70,7 @@ Two sensitivity analyses were specified in advance. The first is per-class AUC-P
 
 ## Null model
 
-The analysis plan was written down before any randomized graph was scored. Each of 500 null graphs is the real graph after 10 × |E| degree-preserving edge swaps (`igraph.Graph.rewire` restricted to simple graphs; Maslov and Sneppen 2002). Every type keeps its exact in-degree and out-degree. Each type's outgoing synapse counts are shuffled across its new outgoing edges, so out-strength is also preserved. All nine topology features are recomputed on each null graph, and the identical model is retrained with identical folds on the real labels. Static features stay fixed because they do not depend on topology.
+The analysis plan was written down before any randomized graph was scored. Each of 500 null graphs is the real graph after 10 × |E| degree-preserving edge swap attempts (`igraph.Graph.rewire` restricted to simple graphs, which rejects swaps that would create multiple edges or self-loops; Maslov and Sneppen 2002). Every type keeps its exact in-degree and out-degree. Each type's outgoing synapse counts are shuffled across its new outgoing edges, so out-strength is also preserved. All nine topology features are recomputed on each null graph, and the identical model is retrained with identical folds on the real labels. Static features stay fixed because they do not depend on topology.
 
 Two pre-specified tests share the null graphs:
 
@@ -81,11 +81,15 @@ Empirical one-sided p-values are (1 + number of null scores ≥ real) / (1 + N) 
 
 ## Pathfinder, candidates and node removal
 
-**Pathfinder.** Each edge from type *u* to type *v* costs −log(synapses from *u* to *v* ÷ total output synapses of *u*). A path's cost is therefore the negative log of the product of successive output shares, and Dijkstra's algorithm returns the route that keeps the largest share of each type's output at every step. The validation pair was fixed before the search was run: the looming-sensitive visual projection LPLC2 and the tergotrochanteral jump motor neuron TTMn. The pass criterion was that the Giant Fiber type DNp01 lies on the route.
+**Pathfinder.** Each edge from type *u* to type *v* costs −log(synapses from *u* to *v* ÷ total output synapses of *u*). A path's cost is therefore the negative log of the product of successive output shares, and Dijkstra's algorithm returns the route with the largest product of output shares. The validation pair was fixed before the search was run: the looming-sensitive visual projection LPLC2 and the tergotrochanteral jump motor neuron TTMn. The pass criterion was that the Giant Fiber type DNp01 lies on the route.
 
 **Candidates.** A candidate is a type labeled isomorphic whose out-of-fold probability is in the top 1% of all types. This rule was fixed before candidate counts were inspected. Each candidate is explained by its three largest positive SHAP contributions (Lundberg and Lee 2017) in the fold model that scored it, and cross-checked against *fru*/*dsx* annotations with a one-sided Fisher exact test.
 
 **Node removal.** The intermediate type with the highest classifier probability on the LPLC2 → TTMn route is deleted from the graph, and routes are recomputed for LPLC2 → TTMn, LC4 → TTMn and LPLC2 → DLMn c-f.
+
+## Descriptive diagnostics
+
+After the pre-specified analyses, the out-of-fold predictions were described further: calibration in ten equal-count probability bins with the Brier score; SHAP values for every type from the fold model that scored it; AUC-PR within each superclass that has at least ten sex-related and ten isomorphic types; additional feature subsets; and a Spearman correlation across neuropils with at least 10,000 synapses. The additional feature subsets were evaluated after the null-model results were known and are marked exploratory. None of these analyses changed the model, its features or its hyperparameters.
 
 ## Software
 
@@ -124,9 +128,30 @@ Performance differs by class. Male-specific types reach AUC-PR 0.832 (chance 0.0
 
 One pre-specified sanity check failed, and it is reported unchanged. The Google Research announcement shows AOTU008 as a neuron that differs between the sexes. The check required that AOTU008, AOTU012, DNg13 or LoVP92 appear among the 20 highest-scoring types. None does: they rank 531, 591, 572 and 574, with probabilities between 0.50 and 0.57. The top of the ranking is instead dominated by male-specific pC1, SIP and mAL types. The model recovers the bulk of sex-related types but does not single out these showcased examples.
 
+## Where the signal sits
+
+The ranking is concentrated at the top. The 118 types in the top 1% include 116 sex-related types, 24% of all 478; the top 10% (1,175 types) holds 85% of them.
+
+Neuropil output shares account for 68% of the total mean absolute SHAP attribution, topology features for 29% and the transmitter for 3%. The largest single attribution is Leiden community membership (mean absolute SHAP 0.83 log-odds). Community 2, whose main output neuropils are SMP, SIP and CRE, holds 256 of the 312 male-specific and 75 of the 166 dimorphic types. The exploratory feature subsets are consistent with this: neuropil shares alone come close to the full model, while topology without community membership carries little signal.
+
+| features | count | AUC-PR | ROC AUC | precision at 100 |
+|---|---|---|---|---|
+| neuropil only | 79 | 0.722 | 0.945 | 0.98 |
+| transmitter only | 1 | 0.049 | 0.559 | 0.05 |
+| community only | 1 | 0.164 | 0.818 | 0.22 |
+| topology without community | 8 | 0.123 | 0.783 | 0.15 |
+| topology and transmitter | 10 | 0.503 | 0.902 | 0.83 |
+| all features except community | 88 | 0.740 | 0.945 | 1.00 |
+
+Performance also differs between superclasses. Where both classes have at least ten types, AUC-PR is 0.860 for central brain intrinsic types (chance 0.053), 0.648 for ascending neurons (0.082), 0.326 for ventral nerve cord intrinsic types (0.010) and 0.319 for descending neurons (0.096).
+
+Sex-related types sit closer to descending and motor types than isomorphic types do (median 1 hop against 2; Mann–Whitney p = 2.7 × 10⁻²⁷), and have somewhat higher PageRank and betweenness: a random sex-related type exceeds a random isomorphic type on either measure with probability 0.62. Across the 109 neuropils with at least 10,000 synapses, the synapse-weighted mean probability correlates with the share of synapses made by annotated sex-related types (Spearman ρ = 0.96, p = 1.1 × 10⁻⁶⁰). This agreement is expected rather than independent, because the probabilities were learned from the same annotations.
+
+Because the positive class is up-weighted in training, the probabilities rank types but overstate frequencies. The mean predicted probability is 0.074 against a positive rate of 0.041, and in the tenth of types with the highest probabilities (mean 0.569) the observed sex-related rate is 0.345. The Brier score is 0.0244, against 0.0390 for a constant prediction at the positive rate.
+
 ## The Giant Fiber pathway is recovered from the graph
 
-The strongest route from LPLC2 to TTMn is LPLC2 → DNp01 → TTMn. It carries 4,862 synapses into the Giant Fiber (2.7% of LPLC2's output) and 90 synapses onto TTMn (3.6% of DNp01's output). The routes from the second looming detector LC4 to TTMn, and from LPLC2 to the indirect flight motor neurons DLMn c-f, also pass through DNp01. The pathway emerges from chemical synapse counts alone, even though part of the Giant Fiber's output to TTMn is carried by electrical synapses that these counts do not include.
+The route from LPLC2 to TTMn with the largest product of output shares is LPLC2 → DNp01 → TTMn. It carries 4,862 synapses into the Giant Fiber (2.7% of LPLC2's output) and 90 synapses onto TTMn (3.6% of DNp01's output). The routes from the second looming detector LC4 to TTMn, and from LPLC2 to the indirect flight motor neurons DLMn c-f, also pass through DNp01. The pathway emerges from chemical synapse counts alone, even though part of the Giant Fiber's output to TTMn is carried by electrical synapses that these counts do not include.
 
 ## Candidates
 
@@ -153,15 +178,17 @@ DNp01 is the only intermediate type on the LPLC2 → TTMn route (probability 0.0
 | LC4 → TTMn | via DNp01, 2 hops | via DNp11, IN21A026, 3 hops | 1.64 × 10⁻³ → 1.55 × 10⁻⁴ |
 | LPLC2 → DLMn c-f | via DNp01, IN18B034, 3 hops | via LPLC4, DNp31, 3 hops | 1.39 × 10⁻⁴ → 2.83 × 10⁻⁵ |
 
-The strongest remaining route from LPLC2 to TTMn is twice as long and keeps about 190 times less of the product of output shares. The graph contains alternative synaptic routes to the jump motor neuron, but none as direct as the Giant Fiber.
+The best remaining route from LPLC2 to TTMn is twice as long, and its product of output shares is about 190 times smaller. The graph contains alternative synaptic routes to the jump motor neuron, but none as direct as the Giant Fiber.
 
 ## Interactive demo
 
-A static site at <https://dhruvin-sarkar.github.io/ConnectomeLens/> presents the results in three views:
+A static site at <https://dhruvin-sarkar.github.io/ConnectomeLens/> presents the results in five sections:
 
-- a neuropil atlas of the out-of-fold probabilities, with each type's largest feature contributions
-- the curated routes, including node removal
-- a game pairing a sex-related type with an isomorphic type of the same superclass and dominant neuropil
+- **Findings**, an illustrated article with twelve interactive figures: the type census, a wiring similarity map, precision-recall curves, the rewiring procedure and null distributions, SHAP attributions, the feature-set comparison, wiring communities, neuropil agreement, topology distributions, limitations, the candidate types with reconstructed skeletons, and the Giant Fiber route with node removal
+- **Atlas**, every cell type and neuropil with its score, SHAP contributions, synapse locations, graph-position percentiles, strongest partners and a reconstructed neuron drawn inside the brain
+- **Circuits**, 17 curated routes between sensory, courtship, descending and motor cell types, with node removal
+- **Guess the Neuron**, a ten-round game pairing a sex-related type with an isomorphic type of the same superclass and dominant neuropil
+- **Methods**, this report with full tables of features, settings, folds, null model, calibration, node removal, pre-specified checks and software
 
 Every value on the site is exported from the result files by a script, and a check script compares the two.
 
@@ -177,20 +204,21 @@ The candidate rule is strict and returns two types. Their independent *fru* anno
 
 The pathfinder and node-removal results support the graph construction rather than the classifier. Recovering LPLC2 → DNp01 → TTMn shows that the type graph and its weighting preserve a known sensory-to-motor pathway. The removal analysis describes which alternative routes exist in the graph, not what a fly without a Giant Fiber would do.
 
+# What this does and does not show
+
+The analysis shows that a classifier trained only on the male connectome ranks the published sex-related cell types far above chance, with a cross-validated AUC-PR of 0.759 against 0.041. It also shows that real connectivity predicts the labels better than degree-preserving randomized connectivity, with p = 0.002 for both pre-specified tests. These are statistical associations between a type's position in the wiring diagram and an existing annotation. They are correlational: they do not show that wiring causes or results from sexual dimorphism, and they say nothing about fly behavior.
+
+The two high-scoring isomorphic-labeled types are candidates for further investigation, not discoveries. Their scores indicate that they are wired like known sex-related types; this report does not identify any new dimorphic neurons. The node-removal analysis describes the alternative synaptic routes that remain once a type is deleted from the graph. It is a statement about structural redundancy, not about the behavioral consequences of losing a neuron. Every number reported here is taken from result files written by the analysis code in the repository, and the report has not been peer reviewed.
+
 # Limitations
 
-**May claim:** the classifier's cross-validated AUC-PR and its significance relative to the null model, stated with the actual computed p-value; that this is correlational, not causal; that the candidate list consists of candidates for further investigation, not discoveries; that the ablation result shows structural redundancy consequences, not behavioral ones.
-
-**May never claim:** discovery of new dimorphic neurons; that correlation implies causation about fly behavior; that this is peer-reviewed neuroscience; any number not actually produced and checked by a script in this repository.
-
-Further limitations of the analysis as built:
-
 - **Label provenance.** No feature comes from the female brain, but the labels themselves come from Janelia's male–female comparison.
+- **Anatomy carries most of the signal.** Neuropil output shares alone reach an AUC-PR of 0.722; real wiring adds a small but consistent increment on top.
 - **Scope.** The data are a single animal at cell-type resolution, with chemical synapses only.
 - **Fixed choices.** The 1% edge threshold and the hyperparameters were fixed before evaluation; other choices would change the topology features.
 - **Precision of p.** With 500 randomized graphs, p = 0.002 is a floor rather than a precise estimate.
+- **Calibration.** The probabilities rank types but overstate how often a type is sex-related.
 - **Label confidence.** The labels include lower-confidence "potentially" annotations.
-- **Status.** This report has not been peer reviewed.
 
 # References
 

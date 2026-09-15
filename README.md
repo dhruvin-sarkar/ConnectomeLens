@@ -1,10 +1,16 @@
 # Wired Different
 
-Google and HHMI Janelia recently published the first complete wiring diagram of a fly's entire central nervous system (about 166,700 neurons and 125 million synapses) and found that roughly 6% of the cell types matched between the sexes differ structurally between male and female brains, concentrated in higher brain centers. We asked whether that difference leaves a detectable signature in the male wiring alone, using no features from the female brain. A classifier trained only on the male connectome predicts published dimorphism labels at AUC-PR 0.759, significantly above a degree-preserving randomized null model (p = 0.002). We use it to flag cell types whose wiring resembles sex-related types as candidates for further investigation. Separately, we reconstruct the well-established Giant Fiber escape circuit from raw graph structure alone, as an independent validation of the underlying methodology.
+HHMI Janelia and Google Research recently published the first complete wiring diagram of an adult male fruit fly's central nervous system (about 166,700 neurons and 125 million synapses) and found that roughly 6% of the cell types matched between the male and female brains are dimorphic or sex-specific, concentrated in higher brain centers. We asked whether that difference leaves a detectable signature in the male wiring alone, using no features from the female brain. A classifier trained only on the male connectome predicts which cell types Janelia annotates as dimorphic or male-specific at AUC-PR 0.759, significantly above a degree-preserving randomized null model (p = 0.002). We use it to flag cell types whose wiring resembles sex-related types as candidates for further investigation. Separately, we reconstruct the well-established Giant Fiber escape circuit from raw graph structure alone, as a check on the graph construction.
 
 ![Neuropils of the male fruit fly brain colored by the classifier's mean predicted probability of a sex-related cell type](assets/hero.png)
 
-**Live demo:** <https://dhruvin-sarkar.github.io/ConnectomeLens/>. It has three views: a dimorphism atlas, a circuit pathfinder with node removal, and a guess-the-neuron game.
+**Live demo:** <https://dhruvin-sarkar.github.io/ConnectomeLens/>. It has five sections:
+
+- **Findings:** a long-form illustrated article with 12 interactive figures: the type census, a wiring similarity map, a precision-recall explorer, a degree-preserving rewiring demo with the null distributions, a SHAP attribution beeswarm, the feature-set comparison, wiring communities, neuropil agreement, topology distributions, a limitations panel (per-class curves, performance by superclass, the named-type check and calibration), the candidate types with 3D skeletons, and the Giant Fiber circuit with node removal.
+- **Atlas:** every cell type and neuropil, with the classifier score, SHAP reasons, synapse locations, graph-position percentiles, strongest partners, and a reconstructed neuron of the type drawn inside the stained brain.
+- **Circuits:** 17 curated routes between sensory, courtship, descending and motor cell types, with node removal.
+- **Guess the Neuron:** a 10-round game that pairs a sex-related type with an isomorphic type of the same superclass and dominant neuropil.
+- **Methods:** the full technical report on the web, with tables of all features, classifier settings, folds, the null model, calibration, all node removals, the pre-specified checks, limitations, software versions and references.
 
 **Headline result:**
 
@@ -30,6 +36,7 @@ The male CNS connectome (`male-cns:v1.0`, Berg et al., *Cell* 2026) labels each 
 | pathfinder | `pipeline/pathfinder.py` | LPLC2 → DNp01 (Giant Fiber) → TTMn |
 | candidates | `pipeline/candidates.py` | [results/candidates.md](results/candidates.md) |
 | node removal | `pipeline/ablation.py` | [results/ablation_report.md](results/ablation_report.md) |
+| diagnostics | `pipeline/model_diagnostics.py` | calibration, SHAP attributions, and breakdowns by feature subset, superclass and community: [results/model_diagnostics.json](results/model_diagnostics.json), [summary](results/model_diagnostics.md) |
 | hero image | `pipeline/render_hero.py` | [assets/hero.png](assets/hero.png), [results/neuropil_scores.csv](results/neuropil_scores.csv) |
 | site data | `export/build_static_json.py` | `web/public/data/` |
 | demo site | `web/` (React, three.js, Vite) | GitHub Pages via `.github/workflows/pages.yml` |
@@ -49,7 +56,7 @@ The male CNS connectome (`male-cns:v1.0`, Berg et al., *Cell* 2026) labels each 
 | hemilineage-grouped cross-validation | 0.701 |
 | male-specific / dimorphic types (AUC-PR) | 0.832 / 0.376 |
 
-- **Giant Fiber validation:** the strongest route from the looming detector LPLC2 to the jump motor neuron TTMn runs through DNp01, the Giant Fiber.
+- **Giant Fiber check:** the route with the largest product of output shares from the looming detector LPLC2 to the jump motor neuron TTMn runs through DNp01, the Giant Fiber.
 - **Node removal:** deleting DNp01 reroutes the LPLC2 → TTMn route through four hops instead of two. The product of output shares falls from 9.45 × 10⁻⁴ to 4.92 × 10⁻⁶.
 - **Candidates:** two isomorphic-labeled types, CL062_b3 and CL062_b2, score in the top 1%. Both carry a *fru* annotation, which was not a model input. They are candidates for further investigation, not evidence of dimorphism.
 
@@ -57,11 +64,9 @@ The male CNS connectome (`male-cns:v1.0`, Berg et al., *Cell* 2026) labels each 
 
 ## Limitations
 
-**May claim:** the classifier's cross-validated AUC-PR and its significance relative to the null model, stated with the actual computed p-value; that this is correlational, not causal; that the candidate list consists of candidates for further investigation, not discoveries; that the ablation result shows structural redundancy consequences, not behavioral ones.
+The classifier's cross-validated AUC-PR (0.759) is significantly above degree-preserving randomized wiring (p = 0.002, the smallest value attainable with 500 randomized graphs). That result is correlational: it links a type's position in the wiring diagram to an existing annotation, and says nothing about causes or behavior. The two flagged types are candidates for further investigation, not new dimorphic neurons. Node removal shows which alternative routes remain in the graph, a structural result rather than a behavioral one. None of this has been peer reviewed.
 
-**May never claim:** discovery of new dimorphic neurons; that correlation implies causation about fly behavior; that this is peer-reviewed neuroscience; any number not actually produced and checked by a script in this repository.
-
-The labels themselves come from Janelia's comparison of male and female connectomes. The graph counts chemical synapses only.
+The labels themselves come from Janelia's comparison of male and female connectomes. Neuropil location carries most of the signal (neuropil features alone reach AUC-PR 0.722), and the graph counts chemical synapses only. The probabilities rank types but overstate how often a type is sex-related.
 
 ## Reproduce
 
@@ -70,10 +75,12 @@ Requirements: Python 3.12, Node 22, GNU Make, and network access to neuPrint and
 ```sh
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-make reproduce   # data, model, validations, site export, tests, checks
+make reproduce   # data, model, validate, export, test and checks, in that order
 make paper       # paper/report.pdf
 make web         # web/dist
 ```
+
+The stages can also be run on their own: `make data` (schema, labels, type graph, features), `make model` (classifier and the Giant Fiber route), `make validate` (null model, candidates, node removal, diagnostics, hero image), `make export` (site data), `make test` (unit tests) and `make checks` (every check script).
 
 Set `NEUPRINT_APPLICATION_CREDENTIALS` to a neuPrint token to query with your account. Without it, the public dataset is queried anonymously.
 
