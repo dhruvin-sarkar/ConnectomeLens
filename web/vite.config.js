@@ -30,6 +30,8 @@ export default defineConfig({
               test: /node_modules[\\/](d3|d3-[^\\/]+|internmap|delaunator|robust-predicates)[\\/]/,
               priority: 1,
             },
+            // Keeps the chunk name free of the leading underscore rolldown derives from the virtual id.
+            { name: "three-geometry", test: GEOMETRY_ID, priority: 0 },
           ],
         },
       },

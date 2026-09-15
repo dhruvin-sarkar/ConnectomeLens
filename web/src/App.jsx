@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect } from "react";
-import { REPO, REPORT_PDF } from "./components/ui.jsx";
+import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
+import { ErrorNote, REPO, REPORT_PDF } from "./components/ui.jsx";
 import {
   loadCandidates,
   loadDiagnostics,
@@ -85,9 +85,8 @@ function Footer() {
         <div>
           <p className="footer-title">Wired Different</p>
           <p>
-            A wiring-only classifier for cell types annotated dimorphic or male-specific in the male <i>Drosophila</i>{" "}
-            connectome, tested
-            against 500 degree-preserving randomized graphs.
+            A wiring-only classifier for cell types annotated dimorphic or male-specific in the male{" "}
+            <i>Drosophila</i> connectome, tested against 500 degree-preserving randomized graphs.
           </p>
         </div>
         <div>
@@ -122,6 +121,27 @@ function Footer() {
   );
 }
 
+/** Shows a plain message in place of a page that fails to render. */
+class PageBoundary extends Component {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="chapter">
+        <ErrorNote>
+          This page could not be displayed. Reload to try again, or go back to{" "}
+          <a href={href("findings")}>the findings</a>.
+        </ErrorNote>
+      </div>
+    );
+  }
+}
+
 /** Moves focus to the main landmark without touching the hash, which the router reads as a page. */
 function skipToMain(event) {
   event.preventDefault();
@@ -133,6 +153,9 @@ function skipToMain(event) {
 export default function App() {
   const { page, params } = useRoute();
   const { component: Page, title, data } = PAGES[page];
+  const main = useRef(null);
+  const firstPage = useRef(page);
+  const [announcement, setAnnouncement] = useState("");
 
   useEffect(() => {
     document.title = title;
@@ -142,16 +165,35 @@ export default function App() {
     for (const load of data) load();
   }, [data]);
 
+  useEffect(() => {
+    if (page === firstPage.current) return;
+    firstPage.current = null;
+    main.current?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+    setAnnouncement(PAGES[page].title);
+  }, [page]);
+
   return (
     <div className={`app app-${page}`}>
       <a className="skip-link" href="#main" onClick={skipToMain}>
         Skip to content
       </a>
       <Nav page={page} />
-      <main id="main" tabIndex={-1} style={{ outline: "none" }} className={TOOLS.has(page) ? "main-tool" : "main-page"}>
-        <Suspense fallback={<p className="loading loading-page">Loading</p>}>
-          <Page params={params} />
-        </Suspense>
+      <p className="visually-hidden" aria-live="polite">
+        {announcement}
+      </p>
+      <main
+        id="main"
+        ref={main}
+        tabIndex={-1}
+        style={{ outline: "none" }}
+        className={TOOLS.has(page) ? "main-tool" : "main-page"}
+      >
+        <PageBoundary key={page}>
+          <Suspense fallback={<p className="loading loading-page">Loading</p>}>
+            <Page params={params} />
+          </Suspense>
+        </PageBoundary>
       </main>
       {!TOOLS.has(page) && <Footer />}
     </div>
