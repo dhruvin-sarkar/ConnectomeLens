@@ -111,7 +111,7 @@ const FEATURES = {
   betweenness: "betweenness centrality",
   community: "wiring community",
   hops_from_sensory: "hops from sensory types",
-  hops_to_motor: "hops to motor output",
+  hops_to_motor: "hops to descending or motor types",
   nt: "predicted transmitter",
 };
 
@@ -123,7 +123,7 @@ export function featureLabel(name) {
     const roi = name.slice("out_frac_".length);
     if (!isUnassignedRegion(roi)) return `output share in ${roi}`;
     const region = roi.split("-")[0];
-    return `output in unnamed ${UNASSIGNED[region] ?? region}`;
+    return `output share in unassigned ${UNASSIGNED[region] ?? region}`;
   }
   return FEATURES[name] ?? name;
 }
@@ -163,6 +163,21 @@ export function scientific(x, digits = 2) {
   const power = String(Number(exponent)).replace(/[-\d]/g, (c) => SUPERSCRIPT[c]);
   return `${mantissa} × 10${power}`;
 }
+
+/** Product of output shares along a route, whose cost is the summed −log share. */
+export const shareProduct = (route) => scientific(Math.exp(-route.cost), 2);
+
+export const SET_LABELS = {
+  full: "All features",
+  full_without_community: "All features except community",
+  static_only: "Neuropil and transmitter",
+  neuropil_only: "Neuropil output shares",
+  topology_and_transmitter: "Topology and transmitter",
+  topology_only: "Graph topology",
+  community_only: "Wiring community alone",
+  topology_without_community: "Topology without community",
+  transmitter_only: "Transmitter alone",
+};
 
 export const ordinal = (n) => {
   const s = ["th", "st", "nd", "rd"];
