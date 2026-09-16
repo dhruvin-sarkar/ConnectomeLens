@@ -2,7 +2,7 @@
 
 <p align="center"><b>Yes, far above chance.</b> A classifier trained only on the male wiring ranks the 478 annotated sex-related cell types with a cross-validated AUC-PR of 0.759 against 0.041 by chance, and none of 500 randomized wirings matched it (p = 0.002). Most of that signal turns out to be anatomical location.<br><sub>Dhruvin Sarkar. An independent analysis of public connectome data, not peer reviewed.</sub></p>
 
-<p align="center"><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/">Illustrated&nbsp;findings</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#atlas">Atlas</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#circuits">Circuits</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#game">Guess&nbsp;the&nbsp;Neuron</a>&emsp;<a href="paper/report.pdf">Technical&nbsp;report</a>&emsp;<a href="#the-poster">Poster</a></p>
+<p align="center"><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/">Illustrated&nbsp;findings</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#atlas">Atlas</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#circuits">Circuits</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#game">Guess&nbsp;the&nbsp;Neuron</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/report.pdf">Technical&nbsp;report</a>&emsp;<a href="#the-poster">Poster</a></p>
 
 ## Abstract
 

@@ -3,7 +3,7 @@ import { LABELS } from "../lib/format.js";
 import { href } from "../lib/route.js";
 
 export const REPO = "https://github.com/dhruvin-sarkar/ConnectomeLens";
-export const REPORT_PDF = `${REPO}/blob/main/paper/report.pdf`;
+export const REPORT_PDF = `${import.meta.env.BASE_URL}report.pdf`;
 
 /** A numbered figure: title, optional controls, the graphic, and a caption that explains how to read it. */
 export function Figure({ id, number, title, controls, caption, children, variant = "", className = "" }) {
