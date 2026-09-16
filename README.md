@@ -1,6 +1,6 @@
 <h1 align="center"><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><img src="assets/readme/plate-title.svg" width="880" alt="Wired Different. The male fruit fly brain seen from the front on a black field, each neuropil stained in turn by the classifier's mean probability in magenta, by the share of synapses made by annotated sex-related cell types in green, and by both together. The superior intermediate protocerebrum and the epaulette turn white because both are high there."></a></h1>
 
-<p align="center"><b>Can the wiring diagram of a male fruit fly tell which of its cell types differ between the sexes?</b><br>Dhruvin Sarkar. An independent analysis of public connectome data, not peer reviewed.</p>
+<p align="center"><b>Yes, far above chance.</b> A classifier trained only on the male wiring ranks the 478 annotated sex-related cell types with a cross-validated AUC-PR of 0.759 against 0.041 by chance, and none of 500 randomized wirings matched it (p = 0.002). Most of that signal turns out to be anatomical location.<br><sub>Dhruvin Sarkar. An independent analysis of public connectome data, not peer reviewed.</sub></p>
 
 <p align="center"><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/">Illustrated&nbsp;findings</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#atlas">Atlas</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#circuits">Circuits</a>&emsp;<a href="https://dhruvin-sarkar.github.io/ConnectomeLens/#game">Guess&nbsp;the&nbsp;Neuron</a>&emsp;<a href="paper/report.pdf">Technical&nbsp;report</a>&emsp;<a href="#the-poster">Poster</a></p>
 
@@ -10,7 +10,7 @@ HHMI Janelia and Google Research have released the first complete wiring diagram
 
 ## Results
 
-<p><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/stat-plate-dark.svg"><img src="assets/readme/stat-plate-light.svg" width="880" alt="Results at a glance. Cross-validated AUC-PR 0.759 with all 89 features, against 0.041 by chance, ROC AUC 0.952. 0 of 500 degree-preserving randomized wirings reach it; they score 0.712 ± 0.005, empirical p = 0.002. Graph topology alone scores 0.489 against 0.070 ± 0.004 on randomized wirings, p = 0.002. 99 of the 100 highest-scoring types are annotated sex-related, and neuropil features alone reach 0.722, so most of the signal is location."></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/stat-plate-dark.svg"><img src="assets/readme/stat-plate-light.svg" width="880" alt="Results at a glance. Cross-validated AUC-PR 0.759 with all 89 features, against 0.041 by chance, ROC AUC 0.952. 0 of 500 degree-preserving randomized wirings reach it; they score 0.712 ± 0.005, empirical p = 0.002. Graph topology alone scores 0.489 against 0.070 ± 0.004 on randomized wirings, p = 0.002. 99 of the 100 highest-scoring types are annotated sex-related, and neuropil features alone reach 0.722, so most of the signal is location."></picture></p>
 
 > [!IMPORTANT]
 > These are statistical associations between a type's place in the male wiring diagram and an existing annotation. They are correlational and say nothing about causes or behavior. Neuropil location carries most of the signal: neuropil features alone reach AUC-PR 0.722, and randomized wirings that keep every non-topology feature still score 0.712.
@@ -39,7 +39,7 @@ HHMI Janelia and Google Research have released the first complete wiring diagram
 
 </details>
 
-<p><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-ranking-dark.svg"><img src="assets/readme/fig-ranking-light.svg" width="880" alt="Figure 1. Top: a barcode of all 11,751 cell types ranked by classifier probability. Green ticks for the 312 male-specific types and cyan ticks for the 166 dimorphic types crowd the left end. An enlarged top 10% shows that 116 of the 118 highest-scoring types are sex-related, and the top 10% holds 85% of all 478. Bottom: precision-recall curves with AUC-PR 0.759 for all 89 features, 0.726 static features only, 0.701 with hemilineage-grouped folds and 0.489 topology only, against chance at 0.041."></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-ranking-dark.svg"><img src="assets/readme/fig-ranking-light.svg" width="880" alt="Figure 1. Top: a barcode of all 11,751 cell types ranked by classifier probability. Green ticks for the 312 male-specific types and cyan ticks for the 166 dimorphic types crowd the left end. An enlarged top 10% shows that 116 of the 118 highest-scoring types are sex-related, and the top 10% holds 85% of all 478. Bottom: precision-recall curves with AUC-PR 0.759 for all 89 features, 0.726 static features only, 0.701 with hemilineage-grouped folds and 0.489 topology only, against chance at 0.041."></picture></p>
 
 **Figure 1. The annotated sex-related types rise to the top of the ranking.** Top: all 11,751 cell types ordered by out-of-fold probability, with male-specific types in green and dimorphic types in cyan; below it, the top 10% enlarged. Bottom: precision against recall for the full model and three comparisons: static features only, hemilineage-grouped folds and topology features only. Out-of-fold means every type was scored by a model that never saw its label. The top 1% (118 types) holds 116 sex-related types, and the top 10% holds 85% of all 478.
 
@@ -70,7 +70,7 @@ Each class is scored against isomorphic types only, using the same out-of-fold p
 
 ## The real wiring against 500 randomized wirings
 
-<p><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-null-dark.svg"><img src="assets/readme/fig-null-light.svg" width="880" alt="Figure 2. Two histograms of cross-validated AUC-PR on 500 degree-preserving randomized graphs. All 89 features: randomized graphs cluster between 0.696 and 0.725, mean 0.712, and the real wiring scores 0.759. Topology features only: randomized graphs fall between 0.060 and 0.082, mean 0.070, and the real wiring scores 0.489, beyond an axis break. No randomized graph reaches the real score in either test, p = 0.002."></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-null-dark.svg"><img src="assets/readme/fig-null-light.svg" width="880" alt="Figure 2. Two histograms of cross-validated AUC-PR on 500 degree-preserving randomized graphs. All 89 features: randomized graphs cluster between 0.696 and 0.725, mean 0.712, and the real wiring scores 0.759. Topology features only: randomized graphs fall between 0.060 and 0.082, mean 0.070, and the real wiring scores 0.489, beyond an axis break. No randomized graph reaches the real score in either test, p = 0.002."></picture></p>
 
 **Figure 2. No randomized wiring reaches the real score.** Each randomized graph keeps every cell type's exact in-degree, out-degree and outgoing synapse total, and shuffles its partners.[^maslov] All nine topology features were recomputed on each graph, and the identical model was retrained with identical folds. p-values are one-sided and empirical.[^phipson] Because no randomized graph reached the real score, p = 0.002, the smallest value 500 graphs can give. It is a floor, not a precise estimate.
 
@@ -89,7 +89,7 @@ The two tests answer different questions. Static features alone reach 0.726, and
 
 ## Where the signal sits
 
-<p><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-signal-dark.svg"><img src="assets/readme/fig-signal-light.svg" width="880" alt="Figure 3. Top: mean absolute SHAP attribution divides into neuropil features 68%, topology 29% and predicted transmitter 3%. Bottom: AUC-PR by feature subset against chance at 0.041. Specified in advance: all 89 features 0.759, static only 0.726, topology only 0.489. Exploratory: all except community 0.740, neuropil only 0.722, topology and transmitter 0.503, community only 0.164, topology without community 0.123, transmitter only 0.049."></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-signal-dark.svg"><img src="assets/readme/fig-signal-light.svg" width="880" alt="Figure 3. Top: mean absolute SHAP attribution divides into neuropil features 68%, topology 29% and predicted transmitter 3%. Bottom: AUC-PR by feature subset against chance at 0.041. Specified in advance: all 89 features 0.759, static only 0.726, topology only 0.489. Exploratory: all except community 0.740, neuropil only 0.722, topology and transmitter 0.503, community only 0.164, topology without community 0.123, transmitter only 0.049."></picture></p>
 
 **Figure 3. Location carries most of the signal; wiring community carries most of the rest.** Top: the share of mean absolute SHAP attribution[^lundberg] by feature group (neuropil 68%, topology 29%, transmitter 3%). Bottom: AUC-PR of the same classifier trained on feature subsets. Filled marks were specified before any randomized graph was scored; open marks were run afterwards and only describe where the signal is. The largest single attribution is Leiden community membership:[^traag] community 2 holds 256 of the 312 male-specific and 75 of the 166 dimorphic types, and its output centers on SMP, SIP and CRE.
 
@@ -184,7 +184,7 @@ Synapses on each connection, in route order:
 > [!CAUTION]
 > One pre-specified check fails. It required at least one of four sex-related types named in public announcements to rank in the top 20: AOTU008 (the example in Google Research's announcement), AOTU012, DNg13 or LoVP92. They rank 531, 591, 572 and 574. The check is reported unchanged, and `make checks` exits non-zero while it fails.
 
-<p><a href="https://dhruvin-sarkar.github.io/ConnectomeLens/"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-limits-dark.svg"><img src="assets/readme/fig-limits-light.svg" width="880" alt="Figure 6. Left: AUC-PR 0.832 for male-specific types against chance 0.027, and 0.376 for dimorphic types against chance 0.015. Middle: on a log rank axis from 1 to 11,751 with the required top 20 shaded, the four named types AOTU008, DNg13, LoVP92 and AOTU012 rank 531, 572, 574 and 591, so the pre-specified check fails. Right: among the tenth of types with the highest probabilities, the mean predicted probability is 0.569 against an observed sex-related rate of 0.345; Brier score 0.0244 against 0.0390 for a constant prediction."></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="assets/readme/fig-limits-dark.svg"><img src="assets/readme/fig-limits-light.svg" width="880" alt="Figure 6. Left: AUC-PR 0.832 for male-specific types against chance 0.027, and 0.376 for dimorphic types against chance 0.015. Middle: on a log rank axis from 1 to 11,751 with the required top 20 shaded, the four named types AOTU008, DNg13, LoVP92 and AOTU012 rank 531, 572, 574 and 591, so the pre-specified check fails. Right: among the tenth of types with the highest probabilities, the mean predicted probability is 0.569 against an observed sex-related rate of 0.345; Brier score 0.0244 against 0.0390 for a constant prediction."></picture></p>
 
 **Figure 6. Dimorphic types are hard, the named types rank near 550, and the probabilities overstate the rate.** Dimorphic neurons exist in both sexes and differ in arbor or partners. That is harder to see from one sex than membership of a male-specific cluster. The probabilities rank types well, but the mean predicted value is 0.074 against a prevalence of 0.041. Brier score 0.0244, against 0.0390 for predicting the prevalence.
 
@@ -315,6 +315,19 @@ The hyperparameters were fixed before evaluation and never tuned. Weighting the 
 <p align="center"><a href="assets/readme/wired-different-poster.png"><img src="assets/readme/poster-preview.png" width="440" alt="Preview of the Wired Different poster: a black title band with the stained brain above three columns of text, figures and tables on a pale paper ground."></a></p>
 <p align="center">One-page summary, 3508 × 4960 pixels. <a href="assets/readme/wired-different-poster.png">Open the full-size poster</a></p>
 
+## Data and outputs
+
+Every number on this page comes from a file in this repository. These are the ones worth opening directly, with nothing installed and nothing run.
+
+| file | what it holds |
+|---|---|
+| [web/public/data/types.json](web/public/data/types.json) | all 11,751 cell types with their out-of-fold probability, dimorphism label, superclass, predicted transmitter, wiring community and dominant neuropils |
+| [web/public/data/explanations.json](web/public/data/explanations.json) | the largest SHAP contributions behind each type's score, written out in words |
+| [results/null_model_scores.csv](results/null_model_scores.csv) | the AUC-PR of all 500 randomized wirings in both tests, which GitHub renders as a searchable table |
+| [results/model_diagnostics.json](results/model_diagnostics.json) | calibration bins, feature-subset scores, SHAP attributions and breakdowns by superclass and community |
+| [results/candidates.md](results/candidates.md) | the two candidate types with their features, *fru*/*dsx* cross-reference and Fisher test |
+| [web/public/data/routes.json](web/public/data/routes.json) | the 17 curated routes with synapse counts, output shares and the result of every node removal |
+
 ## Reproduce
 
 Requirements: Python 3.12, Node 22, GNU Make, and network access to neuPrint and Janelia's public data bucket. The `paper` target also needs pandoc with typst.
@@ -366,6 +379,18 @@ The data are the male adult *Drosophila* CNS connectome from HHMI Janelia FlyEM 
 Also see Google Research's announcement, [A connectomics milestone: Mapping the complete male fruit fly brain](https://research.google/blog/a-connectomics-milestone-mapping-the-complete-male-fruit-fly-brain/). The data were accessed through [neuPrint](https://neuprint.janelia.org), with skeletons processed by [navis](https://github.com/navis-org/navis). Citation metadata for this repository is in [CITATION.cff](CITATION.cff).
 
 Code is released under the [MIT License](LICENSE).
+
+### Citing this work
+
+```bibtex
+@software{sarkar2026wired,
+  author = {Sarkar, Dhruvin},
+  title  = {Wired Different: predicting sexual dimorphism from male {Drosophila} connectome wiring},
+  year   = {2026},
+  url    = {https://dhruvin-sarkar.github.io/ConnectomeLens/},
+  note   = {Independent analysis of public connectome data, not peer reviewed}
+}
+```
 
 [^berg]: Berg S, Beckett IR, Costa M, et al. (2026). Sexual dimorphism in the complete *Drosophila* male central nervous system connectome. *Cell* 189(18):5504–5526.e15. doi:[10.1016/j.cell.2026.08.015](https://doi.org/10.1016/j.cell.2026.08.015)
 [^ke]: Ke G, Meng Q, Finley T, et al. (2017). LightGBM: a highly efficient gradient boosting decision tree. *Advances in Neural Information Processing Systems* 30.
