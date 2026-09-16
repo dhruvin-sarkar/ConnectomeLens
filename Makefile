@@ -1,7 +1,7 @@
 PYTHON ?= python
 CHECKS := schema ground_truth type_graph features classifier pathfinder null_model candidates ablation diagnostics export
 
-.PHONY: reproduce data model validate export test checks paper web
+.PHONY: reproduce data model validate export test checks paper web figures
 
 reproduce: data model validate export test checks
 
@@ -37,3 +37,7 @@ paper:
 
 web:
 	cd web && npm ci && npm run build
+
+# README figures; FONT_DIR holds static TTF instances of Newsreader and Atkinson Hyperlegible Next.
+figures:
+	$(PYTHON) -m pipeline.render_readme_figures $(if $(FONT_DIR),--font-dir $(FONT_DIR))
