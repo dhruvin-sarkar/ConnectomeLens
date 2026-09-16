@@ -669,42 +669,60 @@ def figure_limits(data: dict, theme: str) -> tuple[Figure, str]:
         plate.line([stub, stub], [y - 8, y + bar_h + 8], "ink", 3, zorder=4)
         plate.text(pa[0], y + bar_h + 38, f"Chance {fmt3(per_class[key]['baseline_auc_pr'])}", 26, color="ink3")
 
-    # Named-type rank check on a log axis.
+    # Named-type rank check: a compressed rank strip above the four types in full.
     required = TOP_N
-    plate.text(pb[0], title_y, f"Pre-specified check: a named type in the top {required}", 34, "sans_bold")
     n_types = metrics["n_types"]
-    span = pb[1] - 36 - pb[0]
+    named = sorted(diag["named_types"], key=lambda t: t["rank"])
+    bx0, bx1 = pb
+    plate.text(bx0, title_y, f"Pre-specified check: a named type in the top {required}", 34, "sans_bold")
+
+    strip_y, strip_h = 144, 34
+    span = bx1 - 36 - bx0
 
     def to_rank_x(rank: float) -> float:
-        return pb[0] + np.log10(rank) / np.log10(n_types) * span
+        return bx0 + np.log10(rank) / np.log10(n_types) * span
 
-    zone_top = rows_y[0] - 44
-    plate.rects([(to_rank_x(1), zone_top, to_rank_x(required), axis_y)], "magenta_soft", zorder=1)
-    plate.text(to_rank_x(1) + 16, zone_top + 38, f"Required: top {required}", 26, "sans_bold", color="magenta")
+    plate.rects([(bx0, strip_y, bx0 + span, strip_y + strip_h)], "track", zorder=1)
+    plate.rects([(to_rank_x(1), strip_y, to_rank_x(required), strip_y + strip_h)], "magenta_soft", zorder=2)
+    plate.outline(to_rank_x(1), strip_y, to_rank_x(required), strip_y + strip_h, "magenta", 2)
+    # The four ranks sit within a few units of each other here, so one marker stands for them and the rows resolve them.
+    lo_x, hi_x = to_rank_x(named[0]["rank"]), to_rank_x(named[-1]["rank"])
+    mark = max(hi_x - lo_x, 12)
+    cx = (lo_x + hi_x) / 2
+    plate.rects([(cx - mark / 2, strip_y, cx + mark / 2, strip_y + strip_h)], "ink", zorder=3)
+    plate.text(bx0, strip_y - 14, f"Required: top {required}", 26, "sans_bold", color="magenta")
+    plate.text(cx - mark / 2, strip_y - 14, f"Actual: {named[0]['rank']} to {named[-1]['rank']}", 26, "sans_bold")
+
+    tick_y = strip_y + strip_h
     for rank in (1, 10, 100, 1000, 10000):
-        plate.line([to_rank_x(rank), to_rank_x(rank)], [axis_y, axis_y + 8], "axis", 2)
-        plate.text(to_rank_x(rank), axis_y + 38, f"{rank:,}", 26, color="ink2", ha="center")
-    plate.line([pb[0], to_rank_x(n_types)], [axis_y, axis_y], "axis", 2)
-    plate.text(pb[0], axis_y + 80, f"Rank among {n_types:,} types, log scale", 26, color="ink3")
+        plate.line([to_rank_x(rank), to_rank_x(rank)], [tick_y, tick_y + 8], "axis", 2)
+        plate.text(to_rank_x(rank), tick_y + 38, f"{rank:,}", 26, color="ink2", ha="center")
+    plate.line([bx0, to_rank_x(n_types)], [tick_y, tick_y], "axis", 2)
+    plate.text(bx0, tick_y + 76, f"Rank among {n_types:,} types, log scale", 26, color="ink3")
 
-    named = sorted(diag["named_types"], key=lambda t: t["rank"])
-    xs = [to_rank_x(t["rank"]) for t in named]
-    for entry, x in zip(named, xs):
-        plate.line([x, x], [axis_y - 44, axis_y], LABEL_COLORS.get(entry["label"], "ink"), 3, zorder=5)
-    # One callout for the cluster: a rule rising from the ticks, the four names stacked beside it.
-    cx = (min(xs) + max(xs)) / 2
-    pitch = 40
-    first = zone_top + 38
-    last = first + pitch * (len(named) - 1)
-    plate.line([cx, cx], [first - 26, axis_y - 54], "rule_strong", 2, zorder=2)
+    # The same four types, one row each.
+    head_y = 300
+    rule_y = head_y + 18
+    plate.line([bx0, bx1], [rule_y, rule_y], "rule", 2, zorder=1)
+    plate.text(bx0, head_y, "The four named types", 28, "sans_bold")
+    name_w = max(plate.text_width(t["cell_type"], 28) for t in named)
+    rank_w = max(plate.text_width(str(t["rank"]), 28, "sans_bold") for t in named)
+    label_x = bx0 + 34 + name_w + 32
+    prob_x = bx1 - rank_w - 60
+    plate.text(prob_x, head_y, "Probability", 26, color="ink3", ha="right")
+    plate.text(bx1, head_y, "Rank", 26, color="ink3", ha="right")
+    first_row, pitch = rule_y + 48, 52
     for i, entry in enumerate(named):
-        y = first + i * pitch
-        color = LABEL_COLORS.get(entry["label"], "ink")
-        plate.rects([(cx + 20, y - 19, cx + 38, y - 1)], color, zorder=4)
-        plate.text(cx + 50, y, f"{entry['cell_type']} rank {entry['rank']}", 26)
-    if last > axis_y - 80:
-        raise ValueError("named-type callout overlaps the rank axis")
-    plate.text(pb[0], axis_y + 118, "The check fails and is reported unchanged", 26, "sans_bold", color="ink2")
+        y = first_row + i * pitch
+        plate.rects([(bx0, y - 21, bx0 + 20, y - 1)], LABEL_COLORS.get(entry["label"], "ink"), zorder=4)
+        plate.text(bx0 + 34, y, entry["cell_type"], 28)
+        plate.text(label_x, y, LABEL_NAMES[entry["label"]], 26, color="ink2")
+        plate.text(prob_x, y, fmt3(entry["probability"]), 28, color="ink2", ha="right")
+        plate.text(bx1, y, str(entry["rank"]), 28, "sans_bold", ha="right")
+    if first_row + pitch * (len(named) - 1) > axis_y + 40:
+        raise ValueError("named-type rows overlap the panel notes")
+    plate.text(bx0, axis_y + 80, f"None of the four reaches the top {required}", 26, color="ink2")
+    plate.text(bx0, axis_y + 118, "The check fails and is reported unchanged", 26, "sans_bold", color="ink2")
 
     # Calibration of the highest decile of probabilities.
     calibration = diag["calibration"]
@@ -721,16 +739,17 @@ def figure_limits(data: dict, theme: str) -> tuple[Figure, str]:
     constant = calibration["brier_prevalence_only"]
     plate.text(pc[0], axis_y + 118, f"Constant prediction {constant:.4f}", 26, color="ink2")
 
-    ranks = [t["rank"] for t in named]
-    names = [t["cell_type"] for t in named]
+    listing = ", ".join(
+        f"{t['cell_type']} {LABEL_NAMES[t['label']].lower()}, rank {t['rank']}, probability {fmt3(t['probability'])}"
+        for t in named
+    )
     desc = (
         f"Figure 6. Left: AUC-PR {fmt3(per_class['male_specific']['auc_pr'])} for male-specific types against chance "
         f"{fmt3(per_class['male_specific']['baseline_auc_pr'])}, and {fmt3(per_class['dimorphic']['auc_pr'])} for "
         f"dimorphic types against chance {fmt3(per_class['dimorphic']['baseline_auc_pr'])}. "
-        f"Middle: on a log rank axis "
-        f"from 1 to {n_types:,} with the required top {required} shaded, "
-        f"the four named types {', '.join(names[:-1])} "
-        f"and {names[-1]} rank {', '.join(map(str, ranks[:-1]))} and {ranks[-1]}, so the pre-specified check fails. "
+        f"Middle: the pre-specified check asked for at least one of the four named types in the top {required} of "
+        f"{n_types:,}. A log rank strip marks that band and, well to its right, where the four actually sit; "
+        f"listed in full they are {listing}. The check fails. "
         f"Right: among the tenth of types with the highest probabilities, the mean predicted probability is "
         f"{fmt3(top_bin['mean_probability'])} against an observed sex-related rate of "
         f"{fmt3(top_bin['observed_rate'])}; "
